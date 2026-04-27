@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>{{ title }} — Agent Hart</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div id="layout">
+  <nav id="sidebar">
+    <div class="brand">Agent Hart</div>
+    <a href="/today"{% if active == 'today' %} class="active"{% endif %}>Today</a>
+    <a href="/inbox"{% if active == 'inbox' %} class="active"{% endif %}>Inbox</a>
+    <a href="/agents"{% if active == 'agents' %} class="active"{% endif %}>Agents</a>
+    <a href="/health"{% if active == 'health' %} class="active"{% endif %}>Health</a>
+    <a href="/memory"{% if active == 'memory' %} class="active"{% endif %}>Memory</a>
+  </nav>
+  <main id="main">
+    {% if msg %}
+    <div class="flash {{ msg_type }}">{{ msg }}</div>
+    {% endif %}
+    {% block content %}{% endblock %}
+  </main>
+</div>
+</body>
+</html>

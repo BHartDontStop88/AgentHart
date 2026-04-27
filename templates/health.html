@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="pg-header">
+  <h1>Health</h1>
+</div>
+
+<div class="section">
+  <div class="section-title">Status</div>
+  <div style="display:flex; align-items:center; gap:16px; margin-bottom:12px">
+    {% if latest %}
+    <span class="health-big {{ latest.overall_status }}">{{ latest.overall_status | upper }}</span>
+    <span class="muted small">last checked {{ latest.created_at[:16] }}</span>
+    {% else %}
+    <span class="muted">No health check recorded yet.</span>
+    {% endif %}
+    <form class="inline-form" method="post" action="/actions/health/run">
+      <button class="btn-accent">Run Health Check</button>
+    </form>
+  </div>
+
+  {% if latest %}
+  <table>
+    <thead><tr><th>Check</th><th>Status</th><th>Detail</th></tr></thead>
+    <tbody>
+    {% for chk in latest.checks %}
+    <tr>
+      <td>{{ chk.name }}</td>
+      <td><span class="badge {{ chk.status }}">{{ chk.status }}</span></td>
+      <td class="muted small"><span class="trunc">{{ chk.detail }}</span></td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</div>
+
+<div class="section">
+  <div class="section-title">History <span class="cnt">{{ history | length }}</span></div>
+  {% if history %}
+  <table>
+    <thead><tr><th>Date</th><th>Status</th><th>Checks</th></tr></thead>
+    <tbody>
+    {% for hc in history %}
+    <tr>
+      <td class="small">{{ hc.created_at[:16] }}</td>
+      <td><span class="badge {{ hc.overall_status }}">{{ hc.overall_status }}</span></td>
+      <td class="muted small">
+        {% set ok_count = hc.checks | selectattr('status', 'equalto', 'ok') | list | length %}
+        {% set warn_count = hc.checks | selectattr('status', 'equalto', 'warn') | list | length %}
+        {% set fail_count = hc.checks | selectattr('status', 'equalto', 'fail') | list | length %}
+        {{ ok_count }} ok
+        {% if warn_count %} · <span style="color:var(--warn)">{{ warn_count }} warn</span>{% endif %}
+        {% if fail_count %} · <span style="color:var(--fail)">{{ fail_count }} fail</span>{% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="empty">No health history yet.</p>
+  {% endif %}
+</div>
+
+{% endblock %}

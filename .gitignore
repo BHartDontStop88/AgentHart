@@ -1,0 +1,40 @@
+# Environment and local secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa
+id_ed25519
+
+# Local Agent Hart memory/state
+agent_hart.db
+*.db
+memory.json
+backups/
+reports/
+
+# Local tool/editor state
+.claude/
+.pytest_cache/
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Logs and temporary output
+*.log
+*.tmp
+*.bak
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

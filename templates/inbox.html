@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="pg-header">
+  <h1>Inbox</h1>
+</div>
+
+<div class="section">
+  <div class="section-title">Pending Approvals <span class="cnt">{{ pending_approvals | length }}</span></div>
+  {% if pending_approvals %}
+  <table>
+    <thead><tr><th>Type</th><th>Description</th><th>Risk</th><th>Created</th><th></th></tr></thead>
+    <tbody>
+    {% for ap in pending_approvals %}
+    <tr>
+      <td>{{ ap.action_type }}</td>
+      <td><span class="trunc">{{ ap.description }}</span></td>
+      <td><span class="badge {{ ap.risk_level }}">{{ ap.risk_level }}</span></td>
+      <td class="muted small">{{ ap.created_at[:16] }}</td>
+      <td class="td-actions">
+        <form class="inline-form" method="post" action="/actions/approvals/{{ ap.id }}/approve">
+          <button class="btn-ok">Approve</button>
+        </form>
+        <form class="inline-form" method="post" action="/actions/approvals/{{ ap.id }}/reject" style="margin-left:4px">
+          <button class="btn-fail">Reject</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="empty">No pending approvals.</p>
+  {% endif %}
+</div>
+
+<div class="section">
+  <div class="section-title">Pending Suggested Actions <span class="cnt">{{ pending_actions | length }}</span></div>
+  {% if pending_actions %}
+  <table>
+    <thead><tr><th>#</th><th>Action</th><th>Detail</th><th>Created</th></tr></thead>
+    <tbody>
+    {% for idx, act in pending_actions %}
+    <tr>
+      <td class="muted small">{{ idx }}</td>
+      <td>{{ act.action.get('action', '—') }}</td>
+      <td><span class="trunc">{{ act.action.get('text', act.action | string) }}</span></td>
+      <td class="muted small">{{ act.created_at[:16] }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="empty">No pending suggested actions.</p>
+  {% endif %}
+</div>
+
+<div class="section">
+  <div class="section-title">Open Agent Runs <span class="cnt">{{ open_runs | length }}</span></div>
+  {% if open_runs %}
+  <table>
+    <thead><tr><th>Run ID</th><th>Agent</th><th>Status</th><th>Started</th></tr></thead>
+    <tbody>
+    {% for run in open_runs %}
+    <tr>
+      <td class="mono small">{{ run.id[:8] }}</td>
+      <td class="muted small">{{ run.agent_id[:8] if run.agent_id else '—' }}</td>
+      <td><span class="badge {{ run.status }}">{{ run.status }}</span></td>
+      <td class="muted small">{{ run.created_at[:16] }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="empty">No open runs.</p>
+  {% endif %}
+</div>
+
+<div class="section">
+  <div class="section-title">Health Warnings <span class="cnt">{{ health_warnings | length }}</span></div>
+  {% if health_warnings %}
+  <table>
+    <thead><tr><th>Check</th><th>Status</th><th>Detail</th></tr></thead>
+    <tbody>
+    {% for chk in health_warnings %}
+    <tr>
+      <td>{{ chk.name }}</td>
+      <td><span class="badge {{ chk.status }}">{{ chk.status }}</span></td>
+      <td><span class="trunc">{{ chk.detail }}</span></td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="empty">No health warnings.</p>
+  {% endif %}
+</div>
+
+{% endblock %}

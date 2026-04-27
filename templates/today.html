@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="pg-header">
+  <h1>Today</h1>
+  <span class="date">{{ today }}</span>
+</div>
+
+<div class="grid-2">
+
+  <!-- Left: tasks -->
+  <div>
+    <div class="section">
+      <div class="section-title">Due Today <span class="cnt">{{ due_today | length }}</span></div>
+      {% if due_today %}
+      <table>
+        <thead><tr><th>Task</th><th>Priority</th><th></th></tr></thead>
+        <tbody>
+        {% for _idx, task in due_today %}
+        <tr>
+          <td><span class="trunc">{{ task.text }}</span></td>
+          <td><span class="badge {{ task.priority }}">{{ task.priority }}</span></td>
+          <td class="td-actions">
+            <form class="inline-form" method="post" action="/actions/tasks/{{ task.id }}/complete">
+              <button class="btn-ok">done</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="empty">No tasks due today.</p>
+      {% endif %}
+    </div>
+
+    <div class="section">
+      <div class="section-title">Overdue <span class="cnt">{{ overdue | length }}</span></div>
+      {% if overdue %}
+      <table>
+        <thead><tr><th>Task</th><th>Due</th><th>Pri</th><th></th></tr></thead>
+        <tbody>
+        {% for _idx, task in overdue %}
+        <tr>
+          <td><span class="trunc">{{ task.text }}</span></td>
+          <td class="muted small">{{ task.due_date }}</td>
+          <td><span class="badge {{ task.priority }}">{{ task.priority }}</span></td>
+          <td class="td-actions">
+            <form class="inline-form" method="post" action="/actions/tasks/{{ task.id }}/complete">
+              <button class="btn-ok">done</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="empty">No overdue tasks.</p>
+      {% endif %}
+    </div>
+
+    <div class="section">
+      <div class="section-title">Add Task</div>
+      <form method="post" action="/actions/tasks/add" class="form-row">
+        <input type="text" name="text" placeholder="Task description" class="w-lg" required>
+        <input type="date" name="due_date">
+        <select name="priority">
+          <option value="normal">normal</option>
+          <option value="high">high</option>
+          <option value="low">low</option>
+        </select>
+        <button class="btn-accent">Add</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Right: status -->
+  <div>
+    <div class="section">
+      <div class="section-title">Pending Approvals <span class="cnt">{{ pending_approvals | length }}</span></div>
+      {% if pending_approvals %}
+      <table>
+        <thead><tr><th>Type</th><th>Description</th><th>Risk</th></tr></thead>
+        <tbody>
+        {% for ap in pending_approvals[:5] %}
+        <tr>
+          <td>{{ ap.action_type }}</td>
+          <td><span class="trunc">{{ ap.description }}</span></td>
+          <td><span class="badge {{ ap.risk_level }}">{{ ap.risk_level }}</span></td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% if pending_approvals | length > 5 %}
+      <p class="muted small" style="margin-top:4px">+{{ pending_approvals | length - 5 }} more — <a href="/inbox">see inbox</a></p>
+      {% else %}
+      <p class="muted small" style="margin-top:4px"><a href="/inbox">Review in inbox →</a></p>
+      {% endif %}
+      {% else %}
+      <p class="empty">No pending approvals.</p>
+      {% endif %}
+    </div>
+
+    <div class="section">
+      <div class="section-title">Open Agent Runs <span class="cnt">{{ open_runs | length }}</span></div>
+      {% if open_runs %}
+      <table>
+        <thead><tr><th>Run</th><th>Status</th><th>Started</th></tr></thead>
+        <tbody>
+        {% for run in open_runs %}
+        <tr>
+          <td class="mono small">{{ run.id[:8] }}</td>
+          <td><span class="badge {{ run.status }}">{{ run.status }}</span></td>
+          <td class="muted small">{{ run.created_at[:10] }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="empty">No open runs.</p>
+      {% endif %}
+    </div>
+
+    <div class="section">
+      <div class="section-title">Latest Health</div>
+      {% if latest_health %}
+      <span class="badge {{ latest_health.overall_status }}">{{ latest_health.overall_status }}</span>
+      <span class="muted small"> · {{ latest_health.created_at[:16] }} · <a href="/health">details</a></span>
+      {% else %}
+      <p class="empty">No health check yet. <a href="/health">Run one →</a></p>
+      {% endif %}
+    </div>
+
+    <div class="section">
+      <div class="section-title">Suggested Next Actions</div>
+      <ul class="actions-list">
+      {% for action in suggested_actions %}
+        <li>{{ action }}</li>
+      {% endfor %}
+      </ul>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

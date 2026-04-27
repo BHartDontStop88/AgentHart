@@ -1,0 +1,31 @@
+{
+  "allow_shell_commands": false,
+  "require_approval_for_network_tools": true,
+  "max_target_length": 200,
+  "allowed_domains": [
+    "localhost",
+    "testlab.local"
+  ],
+  "blocked_actions": [
+    "delete_files",
+    "exfiltrate_data",
+    "run_unknown_script"
+  ],
+  "tools": {
+    "ping": {
+      "enabled": true,
+      "requires_approval": true,
+      "risk_level": "low"
+    },
+    "nslookup": {
+      "enabled": true,
+      "requires_approval": true,
+      "risk_level": "low"
+    },
+    "report": {
+      "enabled": true,
+      "requires_approval": false,
+      "risk_level": "low"
+    }
+  }
+}

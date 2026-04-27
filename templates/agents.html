@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="pg-header">
+  <h1>Agents</h1>
+</div>
+
+<div class="section">
+  <div class="section-title">Agent List <span class="cnt">{{ agents | length }}</span></div>
+  {% if agents %}
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th><th>Role</th><th>Status</th><th>Autonomy</th>
+        <th>Steps</th><th>Tools</th><th>Goals</th><th>Runs</th><th>Success</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for agent in agents %}
+    {% set s = agent_stats.get(agent.id, {}) %}
+    <tr>
+      <td><strong>{{ agent.name }}</strong></td>
+      <td class="muted">{{ agent.role }}</td>
+      <td><span class="badge {{ agent.status }}">{{ agent.status }}</span></td>
+      <td class="small">{{ agent.autonomy_level }}</td>
+      <td class="small muted">{{ agent.max_steps }}</td>
+      <td class="small muted">{{ agent.allowed_tools | join(', ') if agent.allowed_tools else '—' }}</td>
+      <td class="small">{{ s.get('goals', 0) }}</td>
+      <td class="small">{{ s.get('runs', 0) }}</td>
+      <td class="small">
+        {% if s.get('reviews', 0) > 0 %}
+        {{ s.get('success', 0) }}/{{ s.get('reviews', 0) }}
+        {% else %}—{% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="empty">No agents yet.</p>
+  {% endif %}
+</div>
+
+<div class="section">
+  <div class="section-title">Add Agent</div>
+  <form method="post" action="/actions/agents/add" class="form-row">
+    <input type="text" name="name" placeholder="Agent name" class="w-md" required>
+    <input type="text" name="role" placeholder="Role (e.g. recon)" class="w-md">
+    <select name="autonomy_level">
+      <option value="supervised">supervised</option>
+      <option value="semi-autonomous">semi-autonomous</option>
+    </select>
+    <input type="text" name="max_steps" placeholder="max steps" style="width:80px" value="5">
+    <button class="btn-accent">Create</button>
+  </form>
+</div>
+
+<div class="section">
+  <div class="section-title">Goals <span class="cnt">{{ goals | length }}</span></div>
+  {% if goals %}
+  <table>
+    <thead><tr><th>Agent</th><th>Goal</th><th>Status</th><th>Created</th></tr></thead>
+    <tbody>
+    {% for goal in goals | reverse %}
+    {% set agent_name = '' %}
+    {% for a in agents %}{% if a.id == goal.agent_id %}{% set agent_name = a.name %}{% endif %}{% endfor %}
+    <tr>
+      <td class="muted small">{{ agent_name or goal.agent_id[:8] if goal.agent_id else '—' }}</td>
+      <td><span class="trunc">{{ goal.text }}</span></td>
+      <td><span class="badge {{ goal.status }}">{{ goal.status }}</span></td>
+      <td class="muted small">{{ goal.created_at[:10] }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="empty">No goals yet.</p>
+  {% endif %}
+</div>
+
+<div class="section">
+  <div class="section-title">Add Goal</div>
+  <form method="post" action="/actions/goals/add" class="form-row">
+    <select name="agent_id">
+      <option value="">— unassigned —</option>
+      {% for agent in agents %}
+      <option value="{{ agent.id }}">{{ agent.name }}</option>
+      {% endfor %}
+    </select>
+    <input type="text" name="text" placeholder="Goal description" class="w-lg" required>
+    <button class="btn-accent">Add Goal</button>
+  </form>
+</div>
+
+<div class="section">
+  <div class="section-title">Recent Task Runs <span class="cnt">{{ task_runs | length }}</span></div>
+  {% if task_runs %}
+  <table>
+    <thead><tr><th>Run</th><th>Agent</th><th>Status</th><th>Started</th><th>Completed</th></tr></thead>
+    <tbody>
+    {% for run in task_runs | reverse %}
+    {% set agent_name = '' %}
+    {% for a in agents %}{% if a.id == run.agent_id %}{% set agent_name = a.name %}{% endif %}{% endfor %}
+    <tr>
+      <td class="mono small">{{ run.id[:8] }}</td>
+      <td class="muted small">{{ agent_name or '—' }}</td>
+      <td><span class="badge {{ run.status }}">{{ run.status }}</span></td>
+      <td class="muted small">{{ run.created_at[:16] }}</td>
+      <td class="muted small">{{ run.completed_at[:16] if run.completed_at else '—' }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="empty">No task runs yet.</p>
+  {% endif %}
+</div>
+
+<div class="section">
+  <div class="section-title">Run Reviews <span class="cnt">{{ run_reviews | length }}</span></div>
+  {% if run_reviews %}
+  <table>
+    <thead><tr><th>Run</th><th>Agent</th><th>Outcome</th><th>Summary</th><th>Date</th></tr></thead>
+    <tbody>
+    {% for rev in run_reviews | reverse %}
+    {% set agent_name = '' %}
+    {% for a in agents %}{% if a.id == rev.agent_id %}{% set agent_name = a.name %}{% endif %}{% endfor %}
+    <tr>
+      <td class="mono small">{{ rev.run_id[:8] if rev.run_id else '—' }}</td>
+      <td class="muted small">{{ agent_name or '—' }}</td>
+      <td><span class="badge {{ rev.outcome }}">{{ rev.outcome }}</span></td>
+      <td><span class="trunc">{{ rev.summary }}</span></td>
+      <td class="muted small">{{ rev.created_at[:10] }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="empty">No run reviews yet.</p>
+  {% endif %}
+</div>
+
+<div class="section">
+  <div class="section-title">Plan Agent Checkpoint</div>
+  <form method="post" action="/actions/checkpoints/add" class="form-row">
+    <select name="agent_id" required>
+      <option value="">— select agent —</option>
+      {% for agent in agents %}
+      <option value="{{ agent.id }}">{{ agent.name }}</option>
+      {% endfor %}
+    </select>
+    <select name="goal_id">
+      <option value="">— no goal —</option>
+      {% for goal in goals %}
+      {% set agent_name = '' %}
+      {% for a in agents %}{% if a.id == goal.agent_id %}{% set agent_name = a.name %}{% endif %}{% endfor %}
+      <option value="{{ goal.id }}">{{ agent_name }}: {{ goal.text[:40] }}</option>
+      {% endfor %}
+    </select>
+    <button class="btn-warn">Create Checkpoint</button>
+  </form>
+  <p class="muted small" style="margin-top:6px">Creates a planning task run. Execution still requires CLI approval.</p>
+</div>
+
+{% endblock %}

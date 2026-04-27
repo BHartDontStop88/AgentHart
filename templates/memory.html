@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="pg-header">
+  <h1>Memory</h1>
+</div>
+
+<div class="grid-2">
+
+  <div>
+    <div class="section">
+      <div class="section-title">Notes <span class="cnt">{{ notes | length }}</span></div>
+      <form method="post" action="/actions/notes/add" class="form-row" style="margin-bottom:10px">
+        <input type="text" name="text" placeholder="Add a note…" class="w-lg" required>
+        <button class="btn-accent">Save</button>
+      </form>
+      {% if notes %}
+      <table>
+        <thead><tr><th>Note</th><th>Created</th></tr></thead>
+        <tbody>
+        {% for note in notes %}
+        <tr>
+          <td>{{ note.text }}</td>
+          <td class="muted small">{{ note.created_at[:10] }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="empty">No notes yet.</p>
+      {% endif %}
+    </div>
+
+    <div class="section">
+      <div class="section-title">Lessons <span class="cnt">{{ lessons | length }}</span></div>
+      <form method="post" action="/actions/lessons/add" class="form-row" style="margin-bottom:10px">
+        <input type="text" name="text" placeholder="Add a lesson…" class="w-lg" required>
+        <input type="text" name="source" placeholder="source" style="width:100px">
+        <button class="btn-accent">Save</button>
+      </form>
+      {% if lessons %}
+      <table>
+        <thead><tr><th>Lesson</th><th>Source</th><th>Created</th></tr></thead>
+        <tbody>
+        {% for lesson in lessons %}
+        <tr>
+          <td>{{ lesson.text }}</td>
+          <td class="muted small">{{ lesson.source }}</td>
+          <td class="muted small">{{ lesson.created_at[:10] }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="empty">No lessons yet.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <div>
+    <div class="section">
+      <div class="section-title">Memory Summaries <span class="cnt">{{ summaries | length }}</span></div>
+      {% if summaries %}
+      <table>
+        <thead><tr><th>Scope</th><th>Summary</th><th>Created</th></tr></thead>
+        <tbody>
+        {% for s in summaries %}
+        <tr>
+          <td class="small">{{ s.scope }}</td>
+          <td><span class="trunc">{{ s.summary }}</span></td>
+          <td class="muted small">{{ s.created_at[:10] }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="empty">No memory summaries yet.</p>
+      {% endif %}
+    </div>
+
+    <div class="section">
+      <div class="section-title">Recent Tool Results <span class="cnt">{{ tool_results | length }}</span></div>
+      {% if tool_results %}
+      <table>
+        <thead><tr><th>Tool</th><th>Target</th><th>Status</th><th>Output</th><th>Date</th></tr></thead>
+        <tbody>
+        {% for r in tool_results %}
+        <tr>
+          <td class="small">{{ r.tool }}</td>
+          <td class="small muted">{{ r.target }}</td>
+          <td><span class="badge {{ r.status }}">{{ r.status }}</span></td>
+          <td><span class="trunc">{{ r.output[:80] }}</span></td>
+          <td class="muted small">{{ r.created_at[:10] }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="empty">No tool results yet.</p>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+{% endblock %}
