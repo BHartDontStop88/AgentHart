@@ -152,7 +152,7 @@ When BotFather finishes, it will give you a bot token. The token looks something
 like this:
 
 ```text
-1234567890:AAExampleTokenTextHere
+replace-with-your-bot-token
 ```
 
 Keep that token private. Anyone with the token can control the bot.

@@ -1,0 +1,36 @@
+<svg width="1200" height="720" viewBox="0 0 1200 720" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Agent Hart Today Dashboard Preview</title>
+  <desc id="desc">A simple mock preview of the Agent Hart Today dashboard.</desc>
+  <rect width="1200" height="720" fill="#f5f7fb"/>
+  <rect x="0" y="0" width="230" height="720" fill="#14213d"/>
+  <text x="32" y="54" fill="#ffffff" font-family="Segoe UI, Arial, sans-serif" font-size="26" font-weight="700">Agent Hart</text>
+  <text x="32" y="92" fill="#a9b7d0" font-family="Segoe UI, Arial, sans-serif" font-size="14">local assistant</text>
+  <rect x="22" y="130" width="186" height="38" rx="6" fill="#2f80ed"/>
+  <text x="42" y="155" fill="#ffffff" font-family="Segoe UI, Arial, sans-serif" font-size="15">Today</text>
+  <text x="42" y="205" fill="#d7def0" font-family="Segoe UI, Arial, sans-serif" font-size="15">Inbox</text>
+  <text x="42" y="250" fill="#d7def0" font-family="Segoe UI, Arial, sans-serif" font-size="15">Agents</text>
+  <text x="42" y="295" fill="#d7def0" font-family="Segoe UI, Arial, sans-serif" font-size="15">Health</text>
+  <text x="42" y="340" fill="#d7def0" font-family="Segoe UI, Arial, sans-serif" font-size="15">Memory</text>
+  <text x="280" y="68" fill="#101828" font-family="Segoe UI, Arial, sans-serif" font-size="34" font-weight="700">Today</text>
+  <text x="280" y="102" fill="#667085" font-family="Segoe UI, Arial, sans-serif" font-size="16">Daily command center for tasks, approvals, runs, and health.</text>
+  <rect x="280" y="140" width="390" height="210" rx="8" fill="#ffffff" stroke="#d0d5dd"/>
+  <text x="304" y="174" fill="#101828" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="700">Due Today</text>
+  <rect x="304" y="198" width="330" height="34" rx="4" fill="#eef4ff"/>
+  <text x="320" y="220" fill="#175cd3" font-family="Segoe UI, Arial, sans-serif" font-size="14">[high] Review dashboard plan</text>
+  <rect x="304" y="244" width="300" height="34" rx="4" fill="#f9fafb"/>
+  <text x="320" y="266" fill="#344054" font-family="Segoe UI, Arial, sans-serif" font-size="14">[normal] Run health check</text>
+  <rect x="704" y="140" width="390" height="210" rx="8" fill="#ffffff" stroke="#d0d5dd"/>
+  <text x="728" y="174" fill="#101828" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="700">Overdue</text>
+  <rect x="728" y="198" width="320" height="34" rx="4" fill="#fff1f3"/>
+  <text x="744" y="220" fill="#c01048" font-family="Segoe UI, Arial, sans-serif" font-size="14">[high] Follow up on agent goal</text>
+  <rect x="280" y="382" width="390" height="210" rx="8" fill="#ffffff" stroke="#d0d5dd"/>
+  <text x="304" y="416" fill="#101828" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="700">Pending Approvals</text>
+  <text x="304" y="454" fill="#667085" font-family="Segoe UI, Arial, sans-serif" font-size="14">No pending approvals.</text>
+  <text x="304" y="502" fill="#101828" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="700">Latest Health</text>
+  <text x="304" y="540" fill="#067647" font-family="Segoe UI, Arial, sans-serif" font-size="14">OK - all checks passing</text>
+  <rect x="704" y="382" width="390" height="210" rx="8" fill="#ffffff" stroke="#d0d5dd"/>
+  <text x="728" y="416" fill="#101828" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="700">Suggested Next Actions</text>
+  <text x="728" y="456" fill="#344054" font-family="Segoe UI, Arial, sans-serif" font-size="14">1. Work the first due-today task.</text>
+  <text x="728" y="492" fill="#344054" font-family="Segoe UI, Arial, sans-serif" font-size="14">2. Review open agent runs.</text>
+  <text x="728" y="528" fill="#344054" font-family="Segoe UI, Arial, sans-serif" font-size="14">3. Check inbox warnings.</text>
+</svg>

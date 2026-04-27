@@ -1,0 +1,36 @@
+<svg width="1200" height="720" viewBox="0 0 1200 720" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Agent Hart Health Dashboard Preview</title>
+  <desc id="desc">A simple mock preview of the Agent Hart Health dashboard.</desc>
+  <rect width="1200" height="720" fill="#f5f7fb"/>
+  <rect x="0" y="0" width="230" height="720" fill="#14213d"/>
+  <text x="32" y="54" fill="#ffffff" font-family="Segoe UI, Arial, sans-serif" font-size="26" font-weight="700">Agent Hart</text>
+  <text x="32" y="92" fill="#a9b7d0" font-family="Segoe UI, Arial, sans-serif" font-size="14">local assistant</text>
+  <text x="42" y="155" fill="#d7def0" font-family="Segoe UI, Arial, sans-serif" font-size="15">Today</text>
+  <text x="42" y="205" fill="#d7def0" font-family="Segoe UI, Arial, sans-serif" font-size="15">Inbox</text>
+  <text x="42" y="250" fill="#d7def0" font-family="Segoe UI, Arial, sans-serif" font-size="15">Agents</text>
+  <rect x="22" y="270" width="186" height="38" rx="6" fill="#2f80ed"/>
+  <text x="42" y="295" fill="#ffffff" font-family="Segoe UI, Arial, sans-serif" font-size="15">Health</text>
+  <text x="42" y="340" fill="#d7def0" font-family="Segoe UI, Arial, sans-serif" font-size="15">Memory</text>
+  <text x="280" y="68" fill="#101828" font-family="Segoe UI, Arial, sans-serif" font-size="34" font-weight="700">Health</text>
+  <text x="280" y="102" fill="#667085" font-family="Segoe UI, Arial, sans-serif" font-size="16">Local checks for memory, policy, tools, Ollama, and run state.</text>
+  <rect x="280" y="140" width="815" height="86" rx="8" fill="#ecfdf3" stroke="#abefc6"/>
+  <text x="310" y="176" fill="#067647" font-family="Segoe UI, Arial, sans-serif" font-size="20" font-weight="700">Agent Hart Health: OK</text>
+  <text x="310" y="204" fill="#067647" font-family="Segoe UI, Arial, sans-serif" font-size="14">Latest check completed successfully.</text>
+  <rect x="280" y="258" width="815" height="300" rx="8" fill="#ffffff" stroke="#d0d5dd"/>
+  <text x="310" y="296" fill="#101828" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="700">Latest Checks</text>
+  <line x1="310" y1="324" x2="1065" y2="324" stroke="#eaecf0"/>
+  <text x="310" y="360" fill="#067647" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700">OK</text>
+  <text x="390" y="360" fill="#344054" font-family="Segoe UI, Arial, sans-serif" font-size="14">memory_writable</text>
+  <text x="720" y="360" fill="#667085" font-family="Segoe UI, Arial, sans-serif" font-size="14">Memory saved.</text>
+  <text x="310" y="410" fill="#067647" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700">OK</text>
+  <text x="390" y="410" fill="#344054" font-family="Segoe UI, Arial, sans-serif" font-size="14">policy_file</text>
+  <text x="720" y="410" fill="#667085" font-family="Segoe UI, Arial, sans-serif" font-size="14">policy.json present</text>
+  <text x="310" y="460" fill="#067647" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700">OK</text>
+  <text x="390" y="460" fill="#344054" font-family="Segoe UI, Arial, sans-serif" font-size="14">tools_registered</text>
+  <text x="720" y="460" fill="#667085" font-family="Segoe UI, Arial, sans-serif" font-size="14">ping, nslookup, report</text>
+  <text x="310" y="510" fill="#dc6803" font-family="Segoe UI, Arial, sans-serif" font-size="14" font-weight="700">WARN</text>
+  <text x="390" y="510" fill="#344054" font-family="Segoe UI, Arial, sans-serif" font-size="14">ollama</text>
+  <text x="720" y="510" fill="#667085" font-family="Segoe UI, Arial, sans-serif" font-size="14">Check model before autonomous planning.</text>
+  <rect x="280" y="590" width="200" height="44" rx="6" fill="#2f80ed"/>
+  <text x="320" y="618" fill="#ffffff" font-family="Segoe UI, Arial, sans-serif" font-size="15" font-weight="700">Run Health Check</text>
+</svg>
