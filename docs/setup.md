@@ -97,13 +97,13 @@ First, create a bot:
 
 Find your numeric Telegram user ID:
 1. Message `@userinfobot` on Telegram
-2. It replies with your numeric ID (e.g., `8648851945`)
+2. It replies with your numeric ID (e.g., `123456789`)
 
 Add to `.env`:
 
 ```env
 TELEGRAM_BOT_TOKEN=1234567890:AAxxxxxx
-TELEGRAM_ALLOWED_USER_IDS=8648851945
+TELEGRAM_ALLOWED_USER_IDS=123456789
 ```
 
 ### GitHub Issues sync (optional)
@@ -146,9 +146,9 @@ After=network-online.target
 
 [Service]
 Type=simple
-User=bhart
-WorkingDirectory=/home/bhart/AgentHart
-ExecStart=/home/bhart/AgentHart/venv/bin/python dashboard.py
+User=youruser
+WorkingDirectory=/home/youruser/AgentHart
+ExecStart=/home/youruser/AgentHart/venv/bin/python dashboard.py
 Restart=on-failure
 StandardOutput=journal
 StandardError=journal
@@ -184,9 +184,9 @@ After=network-online.target
 
 [Service]
 Type=simple
-User=bhart
-WorkingDirectory=/home/bhart/AgentHart
-ExecStart=/home/bhart/AgentHart/venv/bin/python telegram_bot.py
+User=youruser
+WorkingDirectory=/home/youruser/AgentHart
+ExecStart=/home/youruser/AgentHart/venv/bin/python telegram_bot.py
 Restart=on-failure
 StandardOutput=journal
 StandardError=journal
@@ -225,7 +225,7 @@ systemctl list-timers | grep agenthart
 The dashboard only listens on `127.0.0.1`. Access it from your local machine via SSH tunnel:
 
 ```bash
-ssh -L 8765:127.0.0.1:8765 bhart@your-server-ip
+ssh -L 8765:127.0.0.1:8765 youruser@your-server-ip
 ```
 
 Then open `http://127.0.0.1:8765` in your browser.
@@ -235,7 +235,7 @@ For a permanent tunnel on macOS/Linux, add to `~/.ssh/config`:
 ```
 Host agenthart
   HostName your-server-ip
-  User bhart
+  User youruser
   LocalForward 8765 127.0.0.1:8765
 ```
 
@@ -248,7 +248,7 @@ Then just `ssh agenthart` and the tunnel is always up.
 The `failed_login_watcher` agent reads `/var/log/auth.log`. By default, only root can read it. Add your user to the `adm` group:
 
 ```bash
-sudo usermod -aG adm bhart
+sudo usermod -aG adm youruser
 ```
 
 Log out and back in for the group change to take effect.
@@ -307,6 +307,6 @@ sudo systemctl restart agent-hart-dashboard agenthart-telegram
 | Telegram bot not responding | `systemctl status agenthart-telegram` |
 | Ollama timeout in agents | Increase `OLLAMA_TIMEOUT_SECONDS` in `.env` |
 | Database locked errors | Should not happen with WAL mode enabled. If it does, restart the dashboard. |
-| `auth.log` permission denied | `sudo usermod -aG adm bhart` then log out/in |
+| `auth.log` permission denied | `sudo usermod -aG adm youruser` then log out/in |
 | Model not found | `ollama pull gemma4:e2b` |
 | Agent never ran (watchdog alert) | Check `journalctl -u agenthart-<name>` for errors |

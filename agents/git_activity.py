@@ -17,7 +17,7 @@ from ai import ollama_chat_with_meta
 from agents.metrics import AgentRun
 from memory_factory import create_memory_store
 
-SEARCH_ROOTS = [Path("/home/bhart")]
+SEARCH_ROOTS = [Path.home()]
 MAX_DEPTH = 4
 
 

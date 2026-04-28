@@ -185,7 +185,7 @@ venv/bin/python dashboard.py
 Access at `http://127.0.0.1:8765` — use an SSH tunnel if on a remote machine:
 
 ```bash
-ssh -L 8765:127.0.0.1:8765 bhart@your-server-ip
+ssh -L 8765:127.0.0.1:8765 youruser@your-server-ip
 ```
 
 Then open `http://127.0.0.1:8765` in your browser.

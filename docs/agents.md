@@ -188,7 +188,7 @@ Reviews goals defined in the Agents section and checks progress against associat
 **Schedule:** Daily (9:00 PM)  
 **File:** `agents/git_activity.py`
 
-Scans all git repositories found under `/home/bhart` (up to 4 levels deep) for commits in the last 24 hours. Asks Gemma4 to summarize what was worked on.
+Scans all git repositories found under `~` (up to 4 levels deep) for commits in the last 24 hours. Asks Gemma4 to summarize what was worked on.
 
 **Outputs:**
 - Memory summary (scope: `git_activity`) — shown on Dashboard homepage
@@ -242,7 +242,7 @@ If `GITHUB_TOKEN` is not set, the agent exits cleanly with a message. Safe to le
 
 **Schedule:** Daily (6:00 AM)  
 **File:** `agents/failed_login_watcher.py`  
-**Requires:** `bhart` in the `adm` group (`sudo usermod -aG adm bhart`)
+**Requires:** your user in the `adm` group (`sudo usermod -aG adm youruser`)
 
 Reads `/var/log/auth.log` and counts failed SSH login attempts in the last 24 hours. Groups by IP address and asks Gemma4 to assess whether it's background noise or a targeted attack.
 

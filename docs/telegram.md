@@ -16,7 +16,7 @@ Complete guide to controlling Agent Hart from Telegram.
 
 ### 2. Find Your Numeric User ID
 
-Message `@userinfobot` on Telegram. It replies with your numeric ID, e.g., `8648851945`.
+Message `@userinfobot` on Telegram. It replies with your numeric ID, e.g., `123456789`.
 
 **Use the number, not your username.** Usernames can change. Numeric IDs never do.
 
@@ -24,12 +24,12 @@ Message `@userinfobot` on Telegram. It replies with your numeric ID, e.g., `8648
 
 ```env
 TELEGRAM_BOT_TOKEN=1234567890:AAxxxxxx
-TELEGRAM_ALLOWED_USER_IDS=8648851945
+TELEGRAM_ALLOWED_USER_IDS=123456789
 ```
 
 Multiple users:
 ```env
-TELEGRAM_ALLOWED_USER_IDS=8648851945,9876543210
+TELEGRAM_ALLOWED_USER_IDS=123456789,9876543210
 ```
 
 ### 4. Start the Bot
@@ -286,7 +286,7 @@ Agent Hart sends Telegram messages automatically in these cases:
 ## Security Notes
 
 - **Never share your bot token.** Anyone with the token can send commands as if they were you.
-- **Use numeric IDs in the allowlist.** `TELEGRAM_ALLOWED_USER_IDS=8648851945` — not usernames.
+- **Use numeric IDs in the allowlist.** `TELEGRAM_ALLOWED_USER_IDS=123456789` — not usernames.
 - **Don't use `TELEGRAM_ALLOW_ALL=true`** except in isolated test environments.
 - **The approval system applies to Telegram too.** `/run ping` still requires you to tap Approve before the tool runs.
 - **To revoke access**, remove the user's ID from `TELEGRAM_ALLOWED_USER_IDS` and restart the bot.

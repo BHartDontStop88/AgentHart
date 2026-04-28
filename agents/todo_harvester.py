@@ -15,7 +15,7 @@ load_dotenv(BASE_DIR / ".env")
 
 from memory_factory import create_memory_store
 
-SCAN_ROOTS = [Path("/home/bhart")]
+SCAN_ROOTS = [Path.home()]
 EXTENSIONS = {".py", ".js", ".ts", ".sh", ".md"}
 SKIP_DIRS = {"venv", ".git", "__pycache__", "node_modules", ".mypy_cache"}
 TODO_PATTERN = re.compile(r"#\s*(TODO|FIXME|HACK|XXX)[:\s]+(.+)", re.IGNORECASE)

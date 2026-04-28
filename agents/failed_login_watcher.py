@@ -1,7 +1,7 @@
 """
 Failed Login Watcher — scans auth.log daily for SSH brute-force attempts.
 Uses gemma4 to summarize patterns and saves to memory. No paid tokens.
-Requires: sudo usermod -aG adm bhart (so the agent can read /var/log/auth.log)
+Requires: sudo usermod -aG adm <youruser> (so the agent can read /var/log/auth.log)
 """
 import re
 import sys
@@ -48,14 +48,14 @@ def run():
     today = date.today().isoformat()
 
     if not AUTH_LOG.exists():
-        print("[failed_login_watcher] /var/log/auth.log not found — is bhart in the adm group?")
+        print("[failed_login_watcher] /var/log/auth.log not found — is your user in the adm group?")
         return
 
     try:
         log_text = AUTH_LOG.read_text(encoding="utf-8", errors="replace")
     except PermissionError:
         print("[failed_login_watcher] Permission denied reading auth.log.")
-        print("Fix: sudo usermod -aG adm bhart && log out and back in")
+        print("Fix: sudo usermod -aG adm $(whoami) && log out and back in")
         return
 
     since = datetime.now() - timedelta(hours=24)
