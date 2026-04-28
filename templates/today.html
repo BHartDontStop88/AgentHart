@@ -1,14 +1,47 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="pg-header">
-  <h1>Today</h1>
-  <span class="date">{{ today }}</span>
+  <div><h1>Dashboard</h1><div class="sub">{{ today }} · Auto-refreshes every 30s</div></div>
+</div>
+
+<!-- System alerts -->
+{% if system_status and system_status.disk >= 85 %}
+<div class="alert-banner red">&#9888; Disk at {{ system_status.disk }}% — consider cleanup before it hits 90%</div>
+{% elif system_status and system_status.disk >= 80 %}
+<div class="alert-banner yellow">&#9888; Disk at {{ system_status.disk }}% — getting full</div>
+{% endif %}
+{% if overdue | length > 0 %}
+<div class="alert-banner red">&#9888; {{ overdue | length }} overdue task{{ 's' if overdue | length != 1 }} need attention</div>
+{% endif %}
+
+<!-- KPIs -->
+<div class="kpi-grid">
+  <div class="kpi-card blue">
+    <div class="kpi-label">Open Tasks</div>
+    <div class="kpi-value">{{ open_tasks_count | default(0) }}</div>
+    <div class="kpi-sub">{{ due_today | length }} due today</div>
+  </div>
+  <div class="kpi-card {% if overdue | length > 0 %}red{% else %}green{% endif %}">
+    <div class="kpi-label">Overdue</div>
+    <div class="kpi-value">{{ overdue | length }}</div>
+    <div class="kpi-sub">tasks past due date</div>
+  </div>
+  <div class="kpi-card green">
+    <div class="kpi-label">Active Projects</div>
+    <div class="kpi-value">{{ active_projects | default(0) }}</div>
+    <div class="kpi-sub">tracked in system</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Pending Approvals</div>
+    <div class="kpi-value">{{ pending_approvals | length }}</div>
+    <div class="kpi-sub">awaiting review</div>
+  </div>
 </div>
 
 <div class="grid-2">
-
-  <!-- Left: tasks -->
+  <!-- Left column -->
   <div>
+
     <div class="section">
       <div class="section-title">Due Today <span class="cnt">{{ due_today | length }}</span></div>
       {% if due_today %}
@@ -19,8 +52,11 @@
         <tr>
           <td><span class="trunc">{{ task.text }}</span></td>
           <td><span class="badge {{ task.priority }}">{{ task.priority }}</span></td>
-          <td class="td-actions">
+          <td class="td-actions" style="white-space:nowrap">
+            <a href="/tasks/{{ task.id }}/edit?back=/today" class="dim small">edit</a>
+            &nbsp;
             <form class="inline-form" method="post" action="/actions/tasks/{{ task.id }}/complete">
+              <input type="hidden" name="back" value="/today">
               <button class="btn-ok">done</button>
             </form>
           </td>
@@ -28,24 +64,25 @@
         {% endfor %}
         </tbody>
       </table>
-      {% else %}
-      <p class="empty">No tasks due today.</p>
-      {% endif %}
+      {% else %}<p class="empty">Nothing due today.</p>{% endif %}
     </div>
 
+    {% if overdue %}
     <div class="section">
       <div class="section-title">Overdue <span class="cnt">{{ overdue | length }}</span></div>
-      {% if overdue %}
       <table>
         <thead><tr><th>Task</th><th>Due</th><th>Pri</th><th></th></tr></thead>
         <tbody>
         {% for _idx, task in overdue %}
         <tr>
           <td><span class="trunc">{{ task.text }}</span></td>
-          <td class="muted small">{{ task.due_date }}</td>
+          <td class="small dim">{{ task.due_date }}</td>
           <td><span class="badge {{ task.priority }}">{{ task.priority }}</span></td>
-          <td class="td-actions">
+          <td class="td-actions" style="white-space:nowrap">
+            <a href="/tasks/{{ task.id }}/edit?back=/today" class="dim small">edit</a>
+            &nbsp;
             <form class="inline-form" method="post" action="/actions/tasks/{{ task.id }}/complete">
+              <input type="hidden" name="back" value="/today">
               <button class="btn-ok">done</button>
             </form>
           </td>
@@ -53,10 +90,8 @@
         {% endfor %}
         </tbody>
       </table>
-      {% else %}
-      <p class="empty">No overdue tasks.</p>
-      {% endif %}
     </div>
+    {% endif %}
 
     <div class="section">
       <div class="section-title">Add Task</div>
@@ -68,77 +103,124 @@
           <option value="high">high</option>
           <option value="low">low</option>
         </select>
-        <button class="btn-accent">Add</button>
+        <button class="btn-accent">Add Task</button>
       </form>
     </div>
+
   </div>
 
-  <!-- Right: status -->
+  <!-- Right column -->
   <div>
+
+    {% if system_status %}
+    <div class="section">
+      <div class="section-title">System Health</div>
+      <div class="stat-row">
+        <div class="stat-label">CPU</div>
+        <div class="stat-track"><div class="stat-fill {% if system_status.cpu >= 85 %}crit{% elif system_status.cpu >= 70 %}warn{% endif %}" style="width:{{ system_status.cpu }}%"></div></div>
+        <div class="stat-val">{{ system_status.cpu }}%</div>
+      </div>
+      <div class="stat-row">
+        <div class="stat-label">RAM</div>
+        <div class="stat-track"><div class="stat-fill {% if system_status.ram >= 90 %}crit{% elif system_status.ram >= 80 %}warn{% endif %}" style="width:{{ system_status.ram }}%"></div></div>
+        <div class="stat-val">{{ system_status.ram }}%</div>
+      </div>
+      <div class="stat-row">
+        <div class="stat-label">Disk</div>
+        <div class="stat-track"><div class="stat-fill {% if system_status.disk >= 85 %}crit{% elif system_status.disk >= 75 %}warn{% endif %}" style="width:{{ system_status.disk }}%"></div></div>
+        <div class="stat-val">{{ system_status.disk }}%</div>
+      </div>
+      <div class="dim small" style="margin-top:8px">Last checked {{ system_status.checked_at[:16] }}</div>
+    </div>
+    {% endif %}
+
+    <div class="section">
+      <div class="section-title">Project Progress</div>
+      {% if projects_summary %}
+      {% for p in projects_summary %}
+      <div style="margin-bottom:14px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+          <span style="font-size:13px;font-weight:600">{{ p.name }}</span>
+          <span class="dim small">{{ p.done }}/{{ p.total }}</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill {% if p.pct >= 100 %}{% elif p.pct >= 60 %}blue{% else %}yellow{% endif %}" style="width:{{ p.pct }}%"></div>
+        </div>
+      </div>
+      {% endfor %}
+      <a href="/projects" class="dim small">All projects →</a>
+      {% else %}
+      <p class="empty">No projects yet. Use /project in Telegram or visit <a href="/lifecycle">PM Lifecycle</a>.</p>
+      {% endif %}
+    </div>
+
+    <div class="section">
+      <div class="section-title">Suggested Actions</div>
+      <ul class="actions-list">
+      {% for action in suggested_actions %}
+        <li>{{ action }}</li>
+      {% else %}
+        <li class="empty">All clear.</li>
+      {% endfor %}
+      </ul>
+    </div>
+
+    {% if pending_approvals %}
     <div class="section">
       <div class="section-title">Pending Approvals <span class="cnt">{{ pending_approvals | length }}</span></div>
-      {% if pending_approvals %}
       <table>
         <thead><tr><th>Type</th><th>Description</th><th>Risk</th></tr></thead>
         <tbody>
-        {% for ap in pending_approvals[:5] %}
+        {% for ap in pending_approvals[:4] %}
         <tr>
-          <td>{{ ap.action_type }}</td>
+          <td class="small">{{ ap.action_type }}</td>
           <td><span class="trunc">{{ ap.description }}</span></td>
           <td><span class="badge {{ ap.risk_level }}">{{ ap.risk_level }}</span></td>
         </tr>
         {% endfor %}
         </tbody>
       </table>
-      {% if pending_approvals | length > 5 %}
-      <p class="muted small" style="margin-top:4px">+{{ pending_approvals | length - 5 }} more — <a href="/inbox">see inbox</a></p>
-      {% else %}
-      <p class="muted small" style="margin-top:4px"><a href="/inbox">Review in inbox →</a></p>
-      {% endif %}
-      {% else %}
-      <p class="empty">No pending approvals.</p>
-      {% endif %}
+      <a href="/inbox" class="dim small">Review in inbox →</a>
     </div>
+    {% endif %}
 
-    <div class="section">
-      <div class="section-title">Open Agent Runs <span class="cnt">{{ open_runs | length }}</span></div>
-      {% if open_runs %}
-      <table>
-        <thead><tr><th>Run</th><th>Status</th><th>Started</th></tr></thead>
-        <tbody>
-        {% for run in open_runs %}
-        <tr>
-          <td class="mono small">{{ run.id[:8] }}</td>
-          <td><span class="badge {{ run.status }}">{{ run.status }}</span></td>
-          <td class="muted small">{{ run.created_at[:10] }}</td>
-        </tr>
-        {% endfor %}
-        </tbody>
-      </table>
-      {% else %}
-      <p class="empty">No open runs.</p>
-      {% endif %}
-    </div>
+  </div>
+</div>
 
-    <div class="section">
-      <div class="section-title">Latest Health</div>
-      {% if latest_health %}
-      <span class="badge {{ latest_health.overall_status }}">{{ latest_health.overall_status }}</span>
-      <span class="muted small"> · {{ latest_health.created_at[:16] }} · <a href="/health">details</a></span>
-      {% else %}
-      <p class="empty">No health check yet. <a href="/health">Run one →</a></p>
-      {% endif %}
-    </div>
+{% if latest_briefing or latest_task_review or latest_git_activity %}
+<div class="grid-2" style="margin-top:0">
 
-    <div class="section">
-      <div class="section-title">Suggested Next Actions</div>
-      <ul class="actions-list">
-      {% for action in suggested_actions %}
-        <li>{{ action }}</li>
-      {% endfor %}
-      </ul>
+  {% if latest_briefing %}
+  <div class="section">
+    <div class="section-title">Morning Briefing
+      <span class="dim small" style="font-weight:400;text-transform:none">{{ latest_briefing.created_at[:16] }}</span>
     </div>
+    <pre style="font-size:12px;white-space:pre-wrap;max-height:200px;overflow-y:auto">{{ latest_briefing.summary }}</pre>
+    <a href="/reports" class="dim small">All reports →</a>
+  </div>
+  {% endif %}
+
+  <div>
+    {% if latest_task_review %}
+    <div class="section">
+      <div class="section-title">Task Review
+        <span class="dim small" style="font-weight:400;text-transform:none">{{ latest_task_review.created_at[:16] }}</span>
+      </div>
+      <pre style="font-size:12px;white-space:pre-wrap;max-height:160px;overflow-y:auto">{{ latest_task_review.summary }}</pre>
+    </div>
+    {% endif %}
+
+    {% if latest_git_activity %}
+    <div class="section">
+      <div class="section-title">Git Activity
+        <span class="dim small" style="font-weight:400;text-transform:none">{{ latest_git_activity.created_at[:16] }}</span>
+      </div>
+      <pre style="font-size:12px;white-space:pre-wrap;max-height:160px;overflow-y:auto">{{ latest_git_activity.summary }}</pre>
+    </div>
+    {% endif %}
   </div>
 
 </div>
+{% endif %}
+
 {% endblock %}

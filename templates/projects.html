@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="pg-header">
+  <h1>Projects</h1>
+  <span class="muted small">Auto-refreshes every 30s · Use /project in Telegram to create a new project</span>
+</div>
+
+{% if not projects %}
+<div class="section">
+  <p class="empty">No projects yet.</p>
+  <p>Send <strong>/project API pentest for work</strong> in Telegram and Gemma4 will build the task list automatically.</p>
+</div>
+{% endif %}
+
+{% for project_name, data in projects.items() %}
+<div class="section" style="margin-bottom:20px">
+  <div class="section-title">
+    {{ project_name }}
+    <span class="muted small" style="font-weight:normal;margin-left:8px">
+      {{ data.done }}/{{ data.tasks | length }} complete
+      {% set pct = (data.done / data.tasks | length * 100) | int if data.tasks else 0 %}
+      · {{ pct }}%
+    </span>
+  </div>
+
+  <!-- Progress bar -->
+  <div style="background:#2a2a2a;border-radius:4px;height:6px;margin-bottom:12px">
+    {% set pct = (data.done / data.tasks | length * 100) | int if data.tasks else 0 %}
+    <div style="background:#4caf50;height:6px;border-radius:4px;width:{{ pct }}%"></div>
+  </div>
+
+  {% set open_tasks = data.tasks | selectattr('completed', 'equalto', false) | list %}
+  {% set done_tasks = data.tasks | selectattr('completed', 'equalto', true) | list %}
+
+  {% if open_tasks %}
+  <table>
+    <thead><tr><th>Open Task</th><th>Priority</th><th>Due</th><th></th></tr></thead>
+    <tbody>
+    {% for task in open_tasks %}
+    <tr>
+      <td><span class="trunc">{{ task.text | replace('[' + project_name + '] ', '') | replace('[', '') | replace('] ', ' — ') }}</span></td>
+      <td><span class="badge {{ task.priority }}">{{ task.priority }}</span></td>
+      <td class="muted small">{{ task.due_date or '—' }}</td>
+      <td class="td-actions" style="white-space:nowrap">
+        <a href="/tasks/{{ task.id }}/edit?back=/projects" class="dim small">edit</a>
+        &nbsp;
+        <form class="inline-form" method="post" action="/actions/tasks/{{ task.id }}/complete">
+          <input type="hidden" name="back" value="/projects">
+          <button class="btn-ok">done</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  {% if done_tasks %}
+  <details style="margin-top:8px">
+    <summary class="muted small" style="cursor:pointer">{{ done_tasks | length }} completed task(s)</summary>
+    <table style="margin-top:6px;opacity:0.6">
+      <tbody>
+      {% for task in done_tasks %}
+      <tr>
+        <td><s>{{ task.text | replace('[' + project_name + '] ', '') }}</s></td>
+        <td class="muted small">{{ task.due_date or '—' }}</td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </details>
+  {% endif %}
+
+  <!-- Quick add task to this project -->
+  <form method="post" action="/actions/projects/add-task" class="form-row" style="margin-top:10px">
+    <input type="hidden" name="project" value="{{ project_name }}">
+    <input type="text" name="text" placeholder="Add task to {{ project_name }}…" class="w-lg" required>
+    <select name="priority">
+      <option value="normal">normal</option>
+      <option value="high">high</option>
+      <option value="low">low</option>
+    </select>
+    <input type="date" name="due_date">
+    <button class="btn-accent">Add</button>
+  </form>
+</div>
+{% endfor %}
+
+{% endblock %}

@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="pg-header">
+  <div><h1>Search</h1></div>
+</div>
+
+<form method="get" action="/search" class="form-row" style="margin-bottom:24px">
+  <input type="text" name="q" value="{{ q }}" placeholder="Search tasks, notes, memories…"
+         class="w-lg" autofocus style="font-size:15px;padding:8px 12px">
+  <button class="btn-accent" type="submit">Search</button>
+  {% if q %}<a href="/search" class="dim small" style="align-self:center">Clear</a>{% endif %}
+</form>
+
+{% if q %}
+<div class="dim small" style="margin-bottom:16px">
+  {{ total }} result{{ 's' if total != 1 }} for "<strong style="color:var(--text)">{{ q }}</strong>"
+</div>
+
+{% if results.tasks %}
+<div class="section">
+  <div class="section-title">Tasks <span class="cnt">{{ results.tasks | length }}</span></div>
+  <table>
+    <thead><tr><th>Task</th><th>Project</th><th>Priority</th><th>Due</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+    {% for task in results.tasks %}
+    <tr>
+      <td>
+        <span class="trunc {% if task.completed %}dim{% endif %}"
+              style="{% if task.completed %}text-decoration:line-through{% endif %}">
+          {{ task.text }}
+        </span>
+      </td>
+      <td class="dim small">{{ task.project or '—' }}</td>
+      <td><span class="badge {{ task.priority }}">{{ task.priority }}</span></td>
+      <td class="dim small">{{ task.due_date or '—' }}</td>
+      <td>
+        {% if task.completed %}
+          <span class="badge ok">done</span>
+        {% else %}
+          <span class="badge warn">open</span>
+        {% endif %}
+      </td>
+      <td class="td-actions" style="white-space:nowrap">
+        {% if not task.completed %}
+        <a href="/tasks/{{ task.id }}/edit?back=/search?q={{ q | urlencode }}" class="dim small">edit</a>
+        &nbsp;
+        <form class="inline-form" method="post" action="/actions/tasks/{{ task.id }}/complete">
+          <input type="hidden" name="back" value="/search?q={{ q | urlencode }}">
+          <button class="btn-sm btn-ok">done</button>
+        </form>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+{% if results.notes %}
+<div class="section">
+  <div class="section-title">Notes <span class="cnt">{{ results.notes | length }}</span></div>
+  <table>
+    <thead><tr><th>Note</th><th>Saved</th></tr></thead>
+    <tbody>
+    {% for note in results.notes %}
+    <tr>
+      <td>{{ note.text }}</td>
+      <td class="dim small">{{ note.created_at[:16] }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+{% if results.summaries %}
+<div class="section">
+  <div class="section-title">Agent Memories <span class="cnt">{{ results.summaries | length }}</span></div>
+  <table>
+    <thead><tr><th>Scope</th><th>Summary</th><th>Date</th></tr></thead>
+    <tbody>
+    {% for s in results.summaries %}
+    <tr>
+      <td class="mono small">{{ s.scope }}</td>
+      <td class="small">{{ s.summary[:200] }}{% if s.summary | length > 200 %}…{% endif %}</td>
+      <td class="dim small">{{ s.created_at[:10] }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+{% if total == 0 %}
+<p class="empty">No results for "{{ q }}".</p>
+{% endif %}
+
+{% endif %}
+{% endblock %}

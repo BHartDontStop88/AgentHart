@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="pg-header">
+  <div><h1>Agent Metrics</h1><div class="sub">Real-time telemetry · Auto-refreshes every 30s · All data local, zero paid tokens</div></div>
+</div>
+
+<!-- System-wide KPIs -->
+<div class="kpi-grid">
+  <div class="kpi-card blue">
+    <div class="kpi-label">Total Runs</div>
+    <div class="kpi-value">{{ total_runs }}</div>
+    <div class="kpi-sub">{{ runs_today }} today</div>
+  </div>
+  <div class="kpi-card {% if overall_success >= 95 %}green{% elif overall_success >= 80 %}yellow{% else %}red{% endif %}">
+    <div class="kpi-label">Overall Success Rate</div>
+    <div class="kpi-value">{{ overall_success }}%</div>
+    <div class="kpi-sub">{{ total_errors }} errors total</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Total Tokens Used</div>
+    <div class="kpi-value">{{ "{:,}".format(total_tokens) }}</div>
+    <div class="kpi-sub">{{ "{:,}".format(tokens_today) }} today · all local</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Active Agents</div>
+    <div class="kpi-value">{{ summary | length }}</div>
+    <div class="kpi-sub">tracked in system</div>
+  </div>
+</div>
+
+<!-- Per-Agent Summary Table -->
+<div class="section">
+  <div class="section-title">Agent Performance Matrix</div>
+  {% if summary %}
+  <table>
+    <thead>
+      <tr>
+        <th>Agent</th>
+        <th>Runs</th>
+        <th>Success Rate</th>
+        <th>Avg Duration</th>
+        <th>Avg Tokens/Run</th>
+        <th>Tokens/sec</th>
+        <th>Ctx Window %</th>
+        <th>Outputs</th>
+        <th>Last Run</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for a in summary %}
+    {% set total_avg_tokens = ((a.avg_prompt_tokens or 0) + (a.avg_response_tokens or 0)) | int %}
+    <tr>
+      <td style="font-weight:600;font-family:monospace;font-size:12px">{{ a.agent_name }}</td>
+      <td>{{ a.total_runs }}</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="progress-track" style="width:60px">
+            <div class="progress-fill {% if a.success_rate >= 95 %}{% elif a.success_rate >= 80 %}yellow{% else %}crit{% endif %}"
+                 style="width:{{ a.success_rate }}%"></div>
+          </div>
+          <span class="{% if a.success_rate >= 95 %}muted{% elif a.success_rate >= 80 %}dim{% else %}dim{% endif %}"
+                style="{% if a.success_rate < 80 %}color:var(--red){% elif a.success_rate < 95 %}color:var(--yellow){% else %}color:var(--green){% endif %};font-weight:700;font-size:12px">
+            {{ a.success_rate }}%
+          </span>
+        </div>
+      </td>
+      <td class="mono">{{ a.avg_duration or '—' }}s</td>
+      <td>
+        <span title="Prompt: {{ a.avg_prompt_tokens | int }} + Response: {{ a.avg_response_tokens | int }}">
+          {{ total_avg_tokens }}
+        </span>
+        <span class="dim small"> ({{ a.avg_prompt_tokens | int }}↑ {{ a.avg_response_tokens | int }}↓)</span>
+      </td>
+      <td class="mono">{% if a.avg_tps %}{{ a.avg_tps }}{% else %}—{% endif %}</td>
+      <td>
+        {% set runs_with_ctx = a.total_runs %}
+        <span class="dim small">—</span>
+      </td>
+      <td>{{ a.total_outputs or 0 }}</td>
+      <td class="dim small">{{ (a.last_run or '')[:16] }}</td>
+      <td>
+        {% if a.error_runs == 0 %}
+          <span class="badge ok">healthy</span>
+        {% elif a.error_runs > 0 and a.success_rate >= 80 %}
+          <span class="badge warn">degraded</span>
+        {% else %}
+          <span class="badge fail">failing</span>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="empty">No metrics yet — agents record telemetry on their first run.</p>
+  <p class="dim small">Trigger a run manually: <code>cd /home/bhart/AgentHart && venv/bin/python agents/daily_briefing.py</code></p>
+  {% endif %}
+</div>
+
+<div class="grid-2">
+
+  <!-- Recent Runs Log -->
+  <div class="section">
+    <div class="section-title">Recent Runs <span class="cnt">{{ recent | length }}</span></div>
+    {% if recent %}
+    <table>
+      <thead><tr><th>Agent</th><th>When</th><th>Duration</th><th>Tokens</th><th>TPS</th><th>Status</th></tr></thead>
+      <tbody>
+      {% for r in recent[:30] %}
+      <tr>
+        <td class="mono small">{{ r.agent_name }}</td>
+        <td class="dim small">{{ (r.run_started_at or '')[:16] }}</td>
+        <td class="mono small">
+          {% if r.duration_seconds %}{{ r.duration_seconds }}s{% else %}—{% endif %}
+        </td>
+        <td class="small">
+          {% set tok = (r.prompt_tokens or 0) + (r.response_tokens or 0) %}
+          {% if tok > 0 %}{{ tok }}{% else %}—{% endif %}
+        </td>
+        <td class="mono small">
+          {% if r.tokens_per_second %}{{ r.tokens_per_second }}{% else %}—{% endif %}
+        </td>
+        <td>
+          <span class="badge {{ r.status }}">{{ r.status }}</span>
+          {% if r.error_message %}<span class="dim small" title="{{ r.error_message }}"> ⚠</span>{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="empty">No runs recorded yet.</p>
+    {% endif %}
+  </div>
+
+  <!-- Per-Agent Deep Stats -->
+  <div>
+    <div class="section">
+      <div class="section-title">Token Economy</div>
+      {% if summary %}
+      {% for a in summary %}
+      {% set total_avg_tokens = ((a.avg_prompt_tokens or 0) + (a.avg_response_tokens or 0)) | int %}
+      {% if total_avg_tokens > 0 %}
+      <div style="margin-bottom:14px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+          <span class="mono small" style="font-weight:600">{{ a.agent_name }}</span>
+          <span class="dim small">{{ "{:,}".format(a.total_tokens or 0) }} total</span>
+        </div>
+        <div style="display:flex;gap:4px;height:10px;border-radius:4px;overflow:hidden">
+          {% set p_pct = ((a.avg_prompt_tokens or 0) / total_avg_tokens * 100) | int %}
+          <div style="width:{{ p_pct }}%;background:var(--blue);opacity:0.7" title="Prompt tokens: {{ a.avg_prompt_tokens | int }}"></div>
+          <div style="width:{{ 100 - p_pct }}%;background:var(--purple);opacity:0.7" title="Response tokens: {{ a.avg_response_tokens | int }}"></div>
+        </div>
+        <div class="dim small" style="margin-top:3px">
+          <span style="color:var(--blue)">▮</span> prompt {{ a.avg_prompt_tokens | int }}
+          &nbsp;
+          <span style="color:var(--purple)">▮</span> response {{ a.avg_response_tokens | int }}
+        </div>
+      </div>
+      {% endif %}
+      {% endfor %}
+      {% else %}
+      <p class="empty">No data yet.</p>
+      {% endif %}
+    </div>
+
+    <div class="section">
+      <div class="section-title">Reliability Summary</div>
+      {% if summary %}
+      <table>
+        <thead><tr><th>Agent</th><th>Successes</th><th>Errors</th><th>Last OK</th></tr></thead>
+        <tbody>
+        {% for a in summary %}
+        <tr>
+          <td class="mono small">{{ a.agent_name }}</td>
+          <td style="color:var(--green);font-weight:700">{{ a.success_runs }}</td>
+          <td style="color:{% if a.error_runs > 0 %}var(--red){% else %}var(--text-3){% endif %};font-weight:700">{{ a.error_runs }}</td>
+          <td class="dim small">{{ (a.last_success or 'never')[:10] }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="empty">No data yet.</p>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+
+<!-- Metric Glossary -->
+<details style="margin-top:8px">
+  <summary class="dim small" style="cursor:pointer;padding:8px 0">What do these metrics mean?</summary>
+  <div class="section" style="margin-top:8px;font-size:13px;line-height:1.8;color:var(--text-2)">
+    <strong style="color:var(--text)">Tokens/Run</strong> — Total prompt + response tokens consumed per LLM call. Lower = more efficient prompt engineering.<br>
+    <strong style="color:var(--text)">TPS (Tokens/sec)</strong> — Gemma4's generation speed. Higher = model cached in RAM. Drop indicates cold model load.<br>
+    <strong style="color:var(--text)">Model Load ms</strong> — Time to load model weights. Near-zero = model already in memory (warm cache). 2-3s = cold load.<br>
+    <strong style="color:var(--text)">Ctx Window %</strong> — Percentage of Gemma4's context window used per call. Over 80% risks truncation.<br>
+    <strong style="color:var(--text)">Outputs</strong> — Useful items produced: tasks created, reports written, summaries saved, alerts sent.<br>
+    <strong style="color:var(--text)">Token Economy bar</strong> — Blue = prompt tokens sent in. Purple = response tokens generated. Mostly blue = verbose prompts.<br>
+    <strong style="color:var(--text)">Success Rate</strong> — % of runs that completed without error. Below 80% = investigate agent logs.
+  </div>
+</details>
+
+{% endblock %}

@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="pg-header">
+  <div><h1>PM Lifecycle</h1><div class="sub">5-phase project management framework · AI reviews each phase</div></div>
+  {% if not session %}<button class="btn-primary" onclick="document.getElementById('new-form').style.display='block';this.style.display='none'">+ New Project</button>{% endif %}
+</div>
+
+{% if not session %}
+<!-- New session form -->
+<div id="new-form" style="display:none" class="section" style="max-width:540px">
+  <div class="section-title">Start a New Project</div>
+  <form method="post" action="/lifecycle/new">
+    <div style="margin-bottom:12px">
+      <input type="text" name="name" placeholder="Project name (e.g. API Security Assessment Q2)" class="w-lg" required style="width:100%">
+    </div>
+    <button class="btn-primary">Create Project →</button>
+  </form>
+</div>
+
+<!-- Session list -->
+<div class="section">
+  <div class="section-title">Your Projects <span class="cnt">{{ sessions | length }}</span></div>
+  {% if sessions %}
+  <div class="session-list">
+  {% for s in sessions %}
+  <div class="session-item">
+    <div>
+      <div style="font-weight:600">{{ s.name }}</div>
+      <div class="dim small">{{ s.session_type }} · {{ s.created_at[:10] }}</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <span class="badge {{ s.status }}">{{ s.status }}</span>
+      <a href="/lifecycle/{{ s.id }}" class="btn btn-ok" style="text-decoration:none">Open</a>
+    </div>
+  </div>
+  {% endfor %}
+  </div>
+  {% else %}
+  <p class="empty">No projects yet. Click "New Project" to start one.</p>
+  {% endif %}
+</div>
+
+{% else %}
+<!-- Session view -->
+<div style="margin-bottom:20px;display:flex;align-items:center;gap:12px">
+  <a href="/lifecycle" class="dim small">← All Projects</a>
+  <span class="badge {{ session.status }}">{{ session.status }}</span>
+  <span class="dim small">{{ session.created_at[:10] }}</span>
+</div>
+
+<div class="phase-flow">
+{% for phase in phases %}
+<div class="phase-card {{ phase.state }}">
+  <div class="phase-header">
+    <div class="phase-num">{{ loop.index }}</div>
+    <div class="phase-title">{{ phase.title }}</div>
+    <div class="phase-status">
+      {% if phase.state == 'complete' %}✓ Complete
+      {% elif phase.state == 'active' %}● Active
+      {% else %}🔒 Locked{% endif %}
+    </div>
+  </div>
+
+  {% if phase.state == 'complete' or phase.state == 'active' %}
+  <div class="phase-body">
+    <div class="phase-prompt dim">{{ phase.prompt }}</div>
+
+    {% if phase.state == 'complete' %}
+    <div class="phase-content-display">{{ phase.user_content }}</div>
+    {% if phase.ai_suggestion %}
+    <div class="ai-suggestion">
+      <div class="ai-suggestion-label">Gemma4 Insight →</div>
+      {{ phase.ai_suggestion }}
+    </div>
+    {% endif %}
+
+    {% else %}
+    <!-- Active phase form -->
+    <form class="phase-form" method="post" action="/lifecycle/{{ session.id }}/phase">
+      <input type="hidden" name="phase_key" value="{{ phase.key }}">
+      <input type="hidden" name="phase_order" value="{{ loop.index }}">
+      <textarea name="user_content" class="tall" placeholder="{{ phase.placeholder }}" required></textarea>
+      <div style="margin-top:12px">
+        <button class="btn-ai">Submit &amp; Get AI Feedback →</button>
+        <span class="dim small" style="margin-left:10px">Gemma4 will review this and suggest the next phase</span>
+      </div>
+    </form>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endfor %}
+</div>
+
+{% if session.status == 'complete' %}
+<div class="alert-banner green" style="margin-top:16px">&#10003; Project lifecycle complete. View your full report in <a href="/reports">Reports</a>.</div>
+{% endif %}
+{% endif %}
+
+{% endblock %}

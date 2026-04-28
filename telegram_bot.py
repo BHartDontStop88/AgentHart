@@ -1,4 +1,5 @@
 import os
+import subprocess
 from pathlib import Path
 
 from ai import ask_ai, suggest_action
@@ -224,23 +225,75 @@ def format_tools(tools):
     return "\n".join(lines)
 
 
+RUNNABLE_AGENTS = [
+    "agent_watchdog", "daily_briefing", "disk_watchdog", "failed_login_watcher",
+    "git_activity", "github_issues", "goal_tracker", "lesson_reviewer",
+    "memory_digest", "note_organizer", "proxmox_monitor",
+    "task_review", "todo_harvester", "weekly_review",
+]
+
+_BASE_DIR = Path(__file__).resolve().parent
+_VENV_PYTHON = str(_BASE_DIR / "venv/bin/python")
+
+
+def run_agent(agent_name: str) -> tuple[bool, str]:
+    """Run an autonomous agent by name. Returns (success, output_or_error)."""
+    if agent_name not in RUNNABLE_AGENTS:
+        return False, f"Unknown agent '{agent_name}'. Try /agents to see available agents."
+    script = str(_BASE_DIR / "agents" / f"{agent_name}.py")
+    try:
+        result = subprocess.run(
+            [_VENV_PYTHON, script],
+            capture_output=True, text=True, timeout=180,
+            cwd=str(_BASE_DIR),
+        )
+        out = result.stdout.strip() or f"{agent_name} completed (no output)."
+        if result.returncode == 0:
+            return True, out
+        stderr = (result.stderr or "").strip()[-300:]
+        return False, f"Exit {result.returncode}:\n{stderr}"
+    except subprocess.TimeoutExpired:
+        return False, f"{agent_name} timed out after 3 minutes."
+    except Exception as exc:
+        return False, str(exc)
+
+
 def telegram_help_text():
     return "\n".join(
         [
-            "Agent Hart Telegram commands:",
-            "/help",
-            "/brief",
-            "/tasks",
-            "/done <task-number>",
-            "/tools",
-            "/memory",
-            "/lessons",
-            "/addlesson <text>",
-            "/approvals",
-            "/run <tool> <target>",
-            "/approve <approval-id>",
-            "/reject <approval-id>",
-            "/chat <message>",
+            "Agent Hart commands:",
+            "",
+            "Tasks & Notes:",
+            "/addtask [high|low] <text>  — add a task directly",
+            "/addnote <text>             — save a note",
+            "/tasks                      — list open tasks",
+            "/done <task-number>         — complete a task",
+            "",
+            "Projects:",
+            "/project <name>             — AI breaks project into tasks",
+            "/projects                   — show all project progress",
+            "",
+            "Autonomous Agents:",
+            "/agents                     — list all runnable agents",
+            "/agent <name>               — trigger an agent right now",
+            "",
+            "Learning:",
+            "/study <topic>              — generate a quiz on any topic",
+            "/quiz                       — quiz from your saved lessons",
+            "/addlesson <text>           — save a lesson",
+            "/lessons                    — list saved lessons",
+            "",
+            "AI & Memory:",
+            "/chat <message>             — talk to Gemma4",
+            "/brief                      — today's summary",
+            "/memory                     — memory stats",
+            "",
+            "Tools (approval-gated):",
+            "/tools                      — list available tools",
+            "/run <tool> <target>        — run a tool",
+            "/approvals                  — pending approvals",
+            "/approve <id>               — approve an action",
+            "/reject <id>                — reject an action",
         ]
     )
 
@@ -416,6 +469,156 @@ def main():
         )
         await update.message.reply_text(result["message"])
 
+    async def addtask_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        if not await guard(update):
+            return
+        if not context.args:
+            await update.message.reply_text("Usage: /addtask [high|low] <task text>")
+            return
+        args = list(context.args)
+        priority = "normal"
+        if args[0].lower() in ("high", "low", "normal"):
+            priority = args.pop(0).lower()
+        text = " ".join(args).strip()
+        if not text:
+            await update.message.reply_text("Task text cannot be empty.")
+            return
+        task = runtime["memory"].add_task(text, priority=priority)
+        runtime["memory"].add_audit_event("task_added", {"source": "telegram", "task": text})
+        await update.message.reply_text(f"Task added: {text}")
+
+    async def addnote_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        if not await guard(update):
+            return
+        text = " ".join(context.args).strip()
+        if not text:
+            await update.message.reply_text("Usage: /addnote <text>")
+            return
+        runtime["memory"].add_note(text)
+        await update.message.reply_text(f"Note saved.")
+
+    async def project_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        if not await guard(update):
+            return
+        name = " ".join(context.args).strip()
+        if not name:
+            await update.message.reply_text("Usage: /project <project name or description>")
+            return
+        await update.message.reply_text(f"Breaking down project: {name}...\n(Gemma4 is thinking)")
+        from ai import ollama_chat, extract_json_object
+        import json
+        prompt = (
+            f"Break this project into phases and tasks. Project: {name}\n\n"
+            "Return ONLY valid JSON in this exact format, no other text:\n"
+            '{"project":"<name>","phases":[{"name":"<phase>","tasks":["<task>","<task>"]}]}\n\n'
+            "Use 2-4 phases. Each phase should have 2-4 specific actionable tasks.\n"
+            "Keep task text under 60 characters."
+        )
+        raw = ollama_chat(prompt)
+        try:
+            data = json.loads(extract_json_object(raw))
+            phases = data.get("phases", [])
+            project_name = data.get("project", name)
+        except (json.JSONDecodeError, AttributeError):
+            await update.message.reply_text(
+                "Gemma4 returned an unexpected format. Try rephrasing the project name."
+            )
+            return
+
+        memory = runtime["memory"]
+        lines = [f"Project: {project_name}", ""]
+        total = 0
+        for phase in phases:
+            phase_name = phase.get("name", "")
+            lines.append(f"[{phase_name}]")
+            for task_text in phase.get("tasks", []):
+                full_text = f"[{phase_name}] {task_text}"
+                memory.add_task(full_text, priority="normal", project=project_name)
+                lines.append(f"  + {task_text}")
+                total += 1
+        lines.append(f"\n{total} tasks created. View on dashboard or /tasks")
+        memory.add_memory_summary(scope="project_created", summary=f"Project: {project_name}\n" + "\n".join(lines))
+        memory.add_audit_event("project_created", {"name": project_name, "tasks": total})
+        await update.message.reply_text("\n".join(lines))
+
+    async def projects_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        if not await guard(update):
+            return
+        tasks = runtime["memory"].list_tasks()
+        projects: dict[str, dict] = {}
+        for t in tasks:
+            p = t.get("project") or "General"
+            if p not in projects:
+                projects[p] = {"total": 0, "done": 0}
+            projects[p]["total"] += 1
+            if t.get("completed"):
+                projects[p]["done"] += 1
+        if not projects:
+            await update.message.reply_text("No projects yet. Use /project <name> to create one.")
+            return
+        lines = ["Projects:"]
+        for p, stats in projects.items():
+            pct = int(100 * stats["done"] / stats["total"]) if stats["total"] else 0
+            lines.append(f"• {p}: {stats['done']}/{stats['total']} tasks ({pct}%)")
+        await update.message.reply_text("\n".join(lines))
+
+    async def study_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        if not await guard(update):
+            return
+        topic = " ".join(context.args).strip()
+        if not topic:
+            await update.message.reply_text("Usage: /study <topic>\nExample: /study Python decorators")
+            return
+        await update.message.reply_text(f"Generating quiz on: {topic}...")
+        from ai import ollama_chat
+        quiz = ollama_chat(
+            f"You are a study coach. Create 4 quiz questions about: {topic}\n"
+            "Format:\nQ1: <question>\nQ2: <question>\nQ3: <question>\nQ4: <question>\n\n"
+            "ANSWERS:\nA1: <answer>\nA2: <answer>\nA3: <answer>\nA4: <answer>\n"
+            "Keep questions practical and specific."
+        )
+        runtime["memory"].add_memory_summary(scope="study_quiz", summary=f"Topic: {topic}\n{quiz}")
+        await update.message.reply_text(telegram_safe_text(quiz))
+
+    async def quiz_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        if not await guard(update):
+            return
+        lessons = runtime["memory"].list_lessons()
+        if not lessons:
+            await update.message.reply_text("No lessons saved yet. Use /addlesson to save lessons.")
+            return
+        await update.message.reply_text("Generating quiz from your saved lessons...")
+        from ai import ollama_chat
+        batch = lessons[:5]
+        lessons_block = "\n".join(f"[{i+1}] {l.get('text','')}" for i, l in enumerate(batch))
+        quiz = ollama_chat(
+            "Create 3 quiz questions from these lessons:\n\n"
+            f"{lessons_block}\n\n"
+            "Format:\nQ1: <question>\nQ2: <question>\nQ3: <question>\n\n"
+            "ANSWERS:\nA1: <answer>\nA2: <answer>\nA3: <answer>"
+        )
+        await update.message.reply_text(telegram_safe_text(quiz))
+
+    async def agents_list_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        if not await guard(update):
+            return
+        lines = ["Available agents (use /agent <name> to trigger):"]
+        for name in RUNNABLE_AGENTS:
+            lines.append(f"  • {name}")
+        await update.message.reply_text("\n".join(lines))
+
+    async def agent_run_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        if not await guard(update):
+            return
+        name = " ".join(context.args).strip().lower()
+        if not name:
+            await update.message.reply_text("Usage: /agent <name>\nSee /agents for the list.")
+            return
+        await update.message.reply_text(f"Running {name}... (may take up to 3 min)")
+        ok, output = run_agent(name)
+        prefix = f"[{name}] " + ("Done" if ok else "FAILED")
+        await update.message.reply_text(telegram_safe_text(f"{prefix}\n\n{output}"))
+
     async def chat_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not await guard(update):
             return
@@ -531,6 +734,14 @@ def main():
     app.add_handler(CommandHandler("approve", approve_command))
     app.add_handler(CommandHandler("reject", reject_command))
     app.add_handler(CommandHandler("chat", chat_command))
+    app.add_handler(CommandHandler("addtask", addtask_command))
+    app.add_handler(CommandHandler("addnote", addnote_command))
+    app.add_handler(CommandHandler("project", project_command))
+    app.add_handler(CommandHandler("projects", projects_command))
+    app.add_handler(CommandHandler("study", study_command))
+    app.add_handler(CommandHandler("quiz", quiz_command))
+    app.add_handler(CommandHandler("agents", agents_list_command))
+    app.add_handler(CommandHandler("agent", agent_run_command))
     app.add_handler(CallbackQueryHandler(callback_handler))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, text_message))
 

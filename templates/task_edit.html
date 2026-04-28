@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="pg-header">
+  <div><h1>Edit Task</h1><div class="sub">Update task details</div></div>
+</div>
+
+<div class="section" style="max-width:600px">
+  <form method="post" action="/actions/tasks/{{ task.id }}/edit">
+    <input type="hidden" name="back" value="{{ request.query_params.get('back', '/today') }}">
+
+    <div style="margin-bottom:14px">
+      <label class="form-label">Task</label>
+      <input type="text" name="text" value="{{ task.text }}" class="w-full" required autofocus>
+    </div>
+
+    <div style="display:flex;gap:12px;margin-bottom:14px;flex-wrap:wrap">
+      <div>
+        <label class="form-label">Due Date</label>
+        <input type="date" name="due_date" value="{{ task.due_date or '' }}">
+      </div>
+      <div>
+        <label class="form-label">Priority</label>
+        <select name="priority">
+          <option value="low" {% if task.priority == 'low' %}selected{% endif %}>low</option>
+          <option value="normal" {% if task.priority == 'normal' %}selected{% endif %}>normal</option>
+          <option value="high" {% if task.priority == 'high' %}selected{% endif %}>high</option>
+        </select>
+      </div>
+      <div>
+        <label class="form-label">Project</label>
+        <input type="text" name="project" value="{{ task.project or '' }}" placeholder="project name">
+      </div>
+    </div>
+
+    <div style="display:flex;gap:8px;align-items:center">
+      <button class="btn-accent" type="submit">Save Changes</button>
+      <a href="{{ request.query_params.get('back', '/today') }}" style="color:var(--text-3);font-size:13px">Cancel</a>
+    </div>
+  </form>
+</div>
+
+<div class="section" style="max-width:600px">
+  <div class="section-title" style="color:var(--red)">Danger Zone</div>
+  <form method="post" action="/actions/tasks/{{ task.id }}/delete"
+        onsubmit="return confirm('Delete this task? This cannot be undone.')">
+    <input type="hidden" name="back" value="{{ request.query_params.get('back', '/today') }}">
+    <button class="btn-fail" type="submit">Delete Task</button>
+  </form>
+</div>
+{% endblock %}

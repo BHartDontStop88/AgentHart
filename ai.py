@@ -81,12 +81,18 @@ def plan_goal(goal, context=None):
 
 
 def ollama_chat(prompt):
-    """Call the local Ollama chat API with beginner-friendly error messages."""
+    """Call the local Ollama chat API and return response text."""
+    text, _ = ollama_chat_with_meta(prompt)
+    return text
+
+
+def ollama_chat_with_meta(prompt):
+    """Call Ollama and return (response_text, meta_dict) with timing and token counts."""
     config = ollama_config()
     try:
         import ollama
     except ImportError:
-        return "Ollama Python package is not installed. Run: pip install ollama"
+        return "Ollama Python package is not installed. Run: pip install ollama", {}
 
     try:
         client = ollama.Client(
@@ -102,14 +108,30 @@ def ollama_chat(prompt):
             },
         )
     except Exception as exc:
-        return (
+        msg = (
             "Could not reach Ollama or load the model. Make sure Ollama is "
             f"running at {config['base_url']} and the model is installed with: "
             f"ollama pull {config['model']}. "
             f"Details: {exc}"
         )
+        return msg, {"error": str(exc)}
 
-    return response["message"]["content"]
+    prompt_tokens = response.get("prompt_eval_count", 0)
+    response_tokens = response.get("eval_count", 0)
+    eval_duration_ns = response.get("eval_duration", 0)
+    load_duration_ns = response.get("load_duration", 0)
+    tps = round(response_tokens / (eval_duration_ns / 1e9), 1) if eval_duration_ns > 0 else None
+    ctx_pct = round(100 * (prompt_tokens + response_tokens) / config["num_ctx"], 1) if config["num_ctx"] > 0 else None
+
+    meta = {
+        "prompt_tokens": prompt_tokens,
+        "response_tokens": response_tokens,
+        "tokens_per_second": tps,
+        "model_load_ms": round(load_duration_ns / 1e6, 1),
+        "context_window_pct": ctx_pct,
+        "total_duration_ms": round(response.get("total_duration", 0) / 1e6, 1),
+    }
+    return response["message"]["content"], meta
 
 
 def ollama_config():

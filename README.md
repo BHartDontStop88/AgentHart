@@ -1,331 +1,288 @@
 # Agent Hart
 
-Agent Hart is a local-first personal AI assistant experiment. I am a student learning how to use AI, automation, Ollama, and agent-style workflows in a practical way. This project is intentionally built in small, understandable phases instead of trying to be a giant autonomous system all at once.
+A local-first AI project management and automation platform running entirely on your own hardware. No cloud AI calls, no paid tokens — everything runs through Ollama with Gemma4 on your local machine.
 
-I am always open to suggestions, feedback, and improvement ideas. If you see a safer pattern, a cleaner architecture, or a useful feature that would make this better for day-to-day use, I would love to learn from it.
+Built as a learning project by a WGU student exploring AI, automation, cybersecurity, and practical software engineering. Every feature is intentionally visible, safe, and understandable.
+
+---
 
 ## What It Does
 
-Agent Hart can help with:
+Agent Hart is three things in one:
 
-- local chat through Ollama
-- tasks, notes, lessons, and memory summaries
-- approval-gated tool use
-- Telegram commands
-- agent profiles and goals
-- supervised planner checkpoints
-- health checks
-- run reviews and simple outcome learning
-- a minimal local web dashboard
+**1. A web dashboard** (`dashboard.py`) — dark-themed, FastAPI-powered UI for tasks, projects, workflow management, agent monitoring, and reports. Accessible via SSH tunnel from anywhere.
 
-It is not meant to be an unsupervised “do anything” bot. The design goal is a safe assistant that can grow toward automation while keeping memory, approvals, and tool use visible.
+**2. An autonomous agent fleet** (`agents/`) — 14 agents that run on systemd timers, monitor your system, summarize your work, review your tasks, and alert you via Telegram when something needs attention.
 
-## Dashboard Preview
+**3. A Telegram command center** (`telegram_bot.py`) — control everything from your phone: add tasks, trigger any agent, check project progress, chat with Gemma4, get daily briefings.
 
-![Agent Hart Today dashboard preview](docs/images/dashboard-today.svg)
+**Zero paid tokens.** Every AI call goes to Ollama running locally.
 
-![Agent Hart Health dashboard preview](docs/images/dashboard-health.svg)
+---
 
-## Safety Notes
+## Dashboard Pages
 
-Do not commit real secrets or local memory.
+| Page | URL | Purpose |
+|------|-----|---------|
+| Dashboard | `/today` | KPIs, due tasks, system health, agent summaries |
+| Projects | `/projects` | Per-project task boards with progress bars |
+| Inbox | `/inbox` | Pending approvals, suggested actions |
+| PM Lifecycle | `/lifecycle` | 5-phase PM workflow with AI suggestions |
+| Data Analytics | `/analytics` | 6-phase data analysis workflow (Ask→Act) |
+| Agent Builder | `/build` | Design and export CLAUDE.md agent files |
+| Search | `/search` | Full-text search across tasks, notes, memories |
+| Metrics | `/metrics` | Agent telemetry, token usage, success rates |
+| Memory | `/memory` | Notes, lessons, memory summaries |
+| Reports | `/reports` | Agent-generated reports with markdown rendering |
+| Agents | `/agents` | Autonomous agent control panel with Run Now buttons |
+| Health | `/health` | System health checks |
 
-This repo intentionally ignores:
+---
 
-- `.env`
-- `agent_hart.db`
-- `memory.json`
-- `backups/`
-- `reports/`
-- `.claude/`
-- caches and bytecode
+## Autonomous Agents
 
-Use `.env.example` as a template, then create your own private `.env`.
+| Agent | Schedule | What It Does |
+|-------|----------|-------------|
+| `proxmox_monitor` | Every 15 min | CPU/RAM/disk monitoring — Telegram alert on threshold breach |
+| `disk_watchdog` | Every hour | Disk space check — alert if over 85% |
+| `daily_briefing` | 7:00 AM | Morning briefing pushed to Telegram |
+| `task_review` | 9:00 AM + 2:00 PM | Reviews open tasks, flags overdue |
+| `todo_harvester` | Daily | Scans code repos for TODO/FIXME comments |
+| `git_activity` | Daily | Summarizes commits across local git repos |
+| `github_issues` | 8:00 AM + 4:00 PM | Syncs GitHub issues into tasks (requires token) |
+| `memory_digest` | 2:00 AM | Condenses old chat history into lessons |
+| `note_organizer` | Daily | Groups and cleans up saved notes |
+| `lesson_reviewer` | Daily | Reviews and surfaces relevant lessons |
+| `goal_tracker` | Weekly | Reviews goals, flags stalled progress |
+| `weekly_review` | Sunday | Week-in-review pushed to Telegram |
+| `failed_login_watcher` | Daily | Scans auth.log for SSH brute-force attempts |
+| `agent_watchdog` | Every 6 hours | Checks all agents ran on schedule — alerts on silence |
+
+---
+
+## Telegram Commands
+
+```
+Tasks & Notes:
+/addtask [high|low] <text>  — add a task
+/addnote <text>             — save a note
+/tasks                      — list open tasks
+/done <task-number>         — complete a task
+
+Projects:
+/project <name>             — AI breaks project into tasks
+/projects                   — show all project progress
+
+Agents:
+/agents                     — list all runnable agents
+/agent <name>               — trigger any agent right now
+
+Learning:
+/study <topic>              — generate a quiz on any topic
+/quiz                       — quiz from your saved lessons
+/addlesson <text>           — save a lesson
+/lessons                    — list saved lessons
+
+AI & Memory:
+/chat <message>             — talk to Gemma4
+/brief                      — today's summary
+/memory                     — memory stats
+
+Tools (approval-gated):
+/tools                      — list available tools
+/run <tool> <target>        — run a tool
+/approvals                  — pending approvals
+/approve <id>               — approve an action
+/reject <id>                — reject an action
+```
+
+---
+
+## JSON API
+
+Agent Hart exposes a small read-only API for external integrations:
+
+| Endpoint | Returns |
+|----------|---------|
+| `GET /api/status` | Task counts, agent count, overall success rate |
+| `GET /api/tasks?status=open&project=name` | Task list with optional filters |
+| `GET /api/metrics` | Per-agent metrics summary + recent runs |
+| `GET /api/health` | Latest health check result |
+
+---
 
 ## Requirements
 
 - Python 3.11+
-- Ollama installed locally or reachable on your network
-- Optional: Telegram bot token if you want Telegram control
+- Ubuntu/Linux (systemd for agent timers)
+- Ollama with `gemma4:e2b` or any Gemma4 variant
+- Optional: Telegram bot token for remote control
+- Optional: GitHub personal access token for Issues sync
 
-Install Ollama from:
+---
 
-```text
-https://ollama.com
+## Installation
+
+### 1. Install Ollama and pull the model
+
+```bash
+curl -fsSL https://ollama.com/install.sh | sh
+ollama pull gemma4:e2b
 ```
 
-Pull the default model:
+### 2. Clone the repo
 
-```powershell
-ollama pull gemma4
-```
-
-If you use a different model, update `OLLAMA_MODEL` in `.env`.
-
-## Step 1: Clone The Repo
-
-```powershell
+```bash
 git clone https://github.com/BHartDontStop88/AgentHart.git
 cd AgentHart
 ```
 
-## Step 2: Create A Virtual Environment
+### 3. Create virtual environment
 
-```powershell
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-```
-
-If PowerShell blocks activation, run:
-
-```powershell
-Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
-```
-
-Then activate again.
-
-## Step 3: Install Dependencies
-
-```powershell
+```bash
+python3 -m venv venv
+source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-## Step 4: Create Your Environment File
+On Ubuntu, if `python3-venv` is missing:
 
-Copy the example:
-
-```powershell
-copy .env.example .env
+```bash
+sudo apt install python3.12-venv
 ```
 
-Edit `.env`:
+### 4. Configure environment
 
-```powershell
-notepad .env
+```bash
+cp .env.example .env
+nano .env
 ```
 
-Basic local Ollama setup:
+Minimum required config:
 
-```text
-OLLAMA_MODEL=gemma4
+```env
+OLLAMA_MODEL=gemma4:e2b
 OLLAMA_BASE_URL=http://localhost:11434
-OLLAMA_TIMEOUT_SECONDS=60
+OLLAMA_TIMEOUT_SECONDS=120
 OLLAMA_NUM_CTX=4096
 OLLAMA_TEMPERATURE=0.2
 AGENT_HART_MEMORY_BACKEND=sqlite
-TELEGRAM_BOT_TOKEN=replace-with-your-bot-token
-TELEGRAM_ALLOWED_USER_IDS=replace-with-your-numeric-telegram-user-id
+
+TELEGRAM_BOT_TOKEN=your-token-from-botfather
+TELEGRAM_ALLOWED_USER_IDS=your-numeric-telegram-user-id
+
+# Optional — for GitHub Issues sync
+# GITHUB_TOKEN=ghp_your_token
+# GITHUB_REPOS=owner/repo1,owner/repo2
 ```
 
-Leave the Telegram values as placeholders unless you are setting up Telegram.
+### 5. Start the dashboard
 
-## Step 5: Run Tests
-
-```powershell
-python -m unittest discover -s tests
+```bash
+venv/bin/python dashboard.py
 ```
 
-You should see all tests pass.
+Access at `http://127.0.0.1:8765` — use an SSH tunnel if on a remote machine:
 
-## Step 6: Check Ollama Health
-
-Make sure Ollama is running, then run:
-
-```powershell
-python main.py
+```bash
+ssh -L 8765:127.0.0.1:8765 bhart@your-server-ip
 ```
 
-Inside Agent Hart:
+Then open `http://127.0.0.1:8765` in your browser.
 
-```text
-ollama health
+### 6. Start the Telegram bot
+
+```bash
+venv/bin/python telegram_bot.py
 ```
 
-You can also use:
+Or run it as a systemd service — see `docs/setup.md`.
 
-```text
-health check
-health report
-health history
+### 7. Install agent timers (requires sudo)
+
+```bash
+sudo bash scripts/install_timers.sh
 ```
 
-## Step 7: Use The CLI Assistant
+This creates systemd service + timer units for all 14 agents and restarts the Telegram bot.
 
-Start the CLI:
-
-```powershell
-python main.py
-```
-
-Useful commands:
-
-```text
-help
-today
-inbox
-chat hello
-add task Review dashboard --due today --priority high
-list tasks
-complete task 1
-add note Remember to keep tool use approval-gated.
-add lesson Prefer safe defaults.
-memory stats
-review memory
-```
-
-The `today` command is the daily command center. It shows due tasks, overdue tasks, approvals, open runs, health, and suggested next actions.
-
-The `inbox` command shows items that need attention, such as pending approvals, suggested actions, open runs, and health warnings.
-
-## Step 8: Use The Dashboard
-
-Start the local dashboard:
-
-```powershell
-uvicorn dashboard:app --reload --host 127.0.0.1 --port 8000
-```
-
-Open:
-
-```text
-http://127.0.0.1:8000
-```
-
-Dashboard tabs:
-
-- Today
-- Inbox
-- Agents
-- Health
-- Memory
-
-The dashboard is intentionally minimal. It is meant for daily use, not marketing.
-
-## Step 9: Create Agents And Goals
-
-Agent profiles describe what an automation worker is allowed to do.
-
-```text
-add agent Reporter --role summarizer --tools report --max-steps 5
-list agents
-add goal 1 Write a daily status report
-list goals
-```
-
-Check tool permission without executing anything:
-
-```text
-agent check-tool 1 report Daily
-agent check-tool 1 ping localhost
-```
-
-Create one supervised planner checkpoint:
-
-```text
-plan-agent 1 1
-```
-
-This saves a task run and model response, but does not execute tools.
-
-## Step 10: Use Approval-Gated Tools
-
-Available tools are controlled by `policy.json`.
-
-```text
-tools
-run report Daily
-run ping localhost
-approvals
-approve <approval-id>
-reject <approval-id>
-```
-
-Network tools require approval by default.
-
-## Optional: Telegram Bot
-
-Create a Telegram bot with BotFather, then put the token and your numeric Telegram user ID in `.env`.
-
-Run:
-
-```powershell
-python telegram_bot.py
-```
-
-Useful Telegram commands:
-
-```text
-/help
-/brief
-/tasks
-/done 1
-/memory
-/lessons
-/addlesson <text>
-/approvals
-/run <tool> <target>
-/approve <approval-id>
-/reject <approval-id>
-/chat <message>
-```
-
-Do not use `TELEGRAM_ALLOW_ALL=true` except for quick local experiments.
+---
 
 ## Project Structure
 
-```text
-main.py                CLI assistant
-dashboard.py           Local web dashboard
-telegram_bot.py        Telegram interface
-memory.py              JSON memory backend
+```
+dashboard.py           FastAPI web dashboard
+telegram_bot.py        Telegram bot interface
+ai.py                  Ollama integration with metrics
 structured_memory.py   SQLite memory backend
-memory_factory.py      Backend selection
+memory.py              JSON memory backend (legacy/backup)
+memory_factory.py      Backend selector
+reminder_worker.py     Background reminder checker → Telegram
+main.py                Shared CLI helpers and data builders
 tools.py               Tool registry and policy enforcement
-policy.json            Tool and network safety policy
-ai.py                  Ollama integration
-tests/                 Test suite
-templates/             Dashboard HTML
-static/                Dashboard CSS
-skills/                Simple starter tool metadata
+policy.json            Tool permission policy
+
+agents/
+  daily_briefing.py    Morning briefing → Telegram
+  disk_watchdog.py     Disk space monitor + alerts
+  failed_login_watcher.py  SSH brute-force detector
+  git_activity.py      Git commit summarizer
+  github_issues.py     GitHub Issues → tasks sync
+  goal_tracker.py      Goal progress reviewer
+  lesson_reviewer.py   Lesson surface agent
+  memory_digest.py     Chat history compressor
+  metrics.py           AgentRun context manager (telemetry)
+  note_organizer.py    Note cleanup agent
+  notify.py            Telegram send helper
+  proxmox_monitor.py   System resource monitor + alerts
+  task_review.py       Task priority reviewer
+  todo_harvester.py    TODO/FIXME code scanner
+  weekly_review.py     Weekly summary → Telegram
+  agent_watchdog.py    Agent health monitor
+
+scripts/
+  install_timers.sh    Systemd unit installer
+
+templates/             Jinja2 HTML templates
+static/style.css       Dark theme CSS
+reports/               Agent-generated markdown reports
+exports/               Agent Builder CLAUDE.md exports
 ```
 
-## Current Philosophy
+---
 
-Agent Hart is built around a few rules:
+## Safety Design
 
-- keep memory durable
-- keep tool use visible
-- require approval for risky actions
-- separate chat from automation
-- checkpoint plans before execution
-- track health and learning outcomes
+- **Ollama stays on 127.0.0.1** — never exposed to the network
+- **Dashboard stays on 127.0.0.1** — SSH tunnel only
+- **File write sandboxing** — Agent Builder exports only to `exports/` directory
+- **SQLite WAL mode** — concurrent agent writes won't lock the dashboard
+- **Approval-gated tools** — all tool execution requires explicit approval
+- **Telegram allowlist** — only your numeric user ID can control the bot
+- **No shell=True** — all subprocess calls use list arguments
 
-The project is still a learning project, but it is being shaped toward a reliable day-to-day assistant.
+---
+
+## Security Notes
+
+Never commit:
+- `.env` (contains Telegram token and GitHub token)
+- `agent_hart.db` (your personal data)
+- `memory.json` (legacy backup)
+- `reports/` (may contain sensitive summaries)
+
+Use `.env.example` as the public template.
+
+---
 
 ## Feedback Welcome
 
-I am learning, experimenting, and improving this as I go. Suggestions are welcome, especially around:
+This is an active learning project. If you're reviewing it, I'm especially interested in feedback on:
 
 - safer automation patterns
-- better Ollama prompts
-- stronger memory design
-- better dashboard usability
-- test coverage
-- agent health monitoring
-- local-first workflows
+- better Ollama prompt engineering
+- memory architecture improvements
+- dashboard usability
+- what skills to learn next to become job-ready in AI/security engineering
 
-## Help Me Improve
-
-I built Agent Hart as part of my learning journey into AI, automation, cybersecurity, and practical software engineering. I am actively trying to grow into real-world work in this space, and I would genuinely appreciate feedback from people with more experience.
-
-If you review this project, I would be grateful for suggestions such as:
-
-- what I should refactor first
-- what security risks I may be missing
-- how to make the assistant more reliable
-- how to improve the dashboard or user experience
-- how to structure the project more professionally
-- what tests or documentation would make this stronger
-- what skills I should learn next to become job-ready
-
-Constructive issues, pull requests, and advice are welcome. My goal is to keep improving this project and myself with it.
+Issues and pull requests welcome.

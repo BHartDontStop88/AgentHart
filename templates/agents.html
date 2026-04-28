@@ -4,6 +4,50 @@
   <h1>Agents</h1>
 </div>
 
+<!-- Autonomous Agent Control Panel -->
+<div class="section">
+  <div class="section-title">Autonomous Agents <span class="cnt">{{ runnable_agents | length }}</span></div>
+  <table>
+    <thead>
+      <tr>
+        <th>Agent</th>
+        <th>Runs</th>
+        <th>Success Rate</th>
+        <th>Last Run</th>
+        <th>Avg Duration</th>
+        <th>Last Output</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for name in runnable_agents %}
+    {% set m = metrics_by_name.get(name, {}) %}
+    {% set out = last_output.get(name, '') %}
+    <tr>
+      <td style="font-weight:600;font-family:monospace;font-size:12px">{{ name }}</td>
+      <td>{{ m.get('total_runs', '—') }}</td>
+      <td>
+        {% if m.get('total_runs') %}
+          <span style="color:{% if m.success_rate >= 95 %}var(--green){% elif m.success_rate >= 80 %}var(--yellow){% else %}var(--red){% endif %};font-weight:700">
+            {{ m.success_rate }}%
+          </span>
+        {% else %}<span class="dim">—</span>{% endif %}
+      </td>
+      <td class="dim small">{{ (m.get('last_run') or '')[:16] or '—' }}</td>
+      <td class="mono small">{{ m.get('avg_duration', '—') }}{% if m.get('avg_duration') %}s{% endif %}</td>
+      <td class="dim small" style="max-width:240px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis"
+          title="{{ out }}">{{ out[:100] if out else '—' }}</td>
+      <td>
+        <form method="post" action="/actions/agents/run/{{ name }}" style="margin:0">
+          <button class="btn-sm">Run Now</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+
 <div class="section">
   <div class="section-title">Agent List <span class="cnt">{{ agents | length }}</span></div>
   {% if agents %}

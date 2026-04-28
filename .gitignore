@@ -12,6 +12,8 @@ id_ed25519
 # Local Agent Hart memory/state
 agent_hart.db
 *.db
+*.db-shm
+*.db-wal
 memory.json
 backups/
 reports/

@@ -76,6 +76,7 @@ class MemoryStore:
                 task["id"] = make_id()
             task.setdefault("due_date", None)
             task.setdefault("priority", "normal")
+            task.setdefault("project", None)
         for reminder in data["reminders"]:
             reminder.setdefault("completed", False)
         for approval in data["approval_requests"]:
@@ -143,7 +144,7 @@ class MemoryStore:
     def list_notes(self):
         return self.data["notes"]
 
-    def add_task(self, text, due_date=None, priority="normal"):
+    def add_task(self, text, due_date=None, priority="normal", project=None):
         """Append one task and immediately persist it."""
         task = {
             "id": make_id(),
@@ -152,6 +153,7 @@ class MemoryStore:
             "created_at": timestamp(),
             "due_date": due_date,
             "priority": priority,
+            "project": project,
         }
         self.data["tasks"].append(task)
         self.save()

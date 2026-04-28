@@ -21,7 +21,9 @@ class SQLiteMemoryStore:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.connection = sqlite3.connect(self.path)
         self.connection.row_factory = sqlite3.Row
+        self.connection.execute("PRAGMA journal_mode=WAL")
         self.create_schema()
+        self._run_migrations()
         self.import_legacy_json_once()
 
     def close(self):
@@ -71,6 +73,21 @@ class SQLiteMemoryStore:
     def save(self):
         """Keep API compatibility with the JSON store."""
         self.connection.commit()
+
+    def _run_migrations(self):
+        """Safely add new columns to existing tables without breaking old DBs."""
+        import sqlite3 as _sqlite3
+        migrations = [
+            "ALTER TABLE tasks ADD COLUMN project text",
+            "CREATE INDEX IF NOT EXISTS idx_audit_log_created ON audit_log(created_at)",
+            "CREATE INDEX IF NOT EXISTS idx_chat_history_created ON chat_history(created_at)",
+        ]
+        for sql in migrations:
+            try:
+                self.connection.execute(sql)
+                self.connection.commit()
+            except _sqlite3.OperationalError:
+                pass  # column already exists
 
     def create_schema(self):
         self.connection.executescript(
@@ -237,6 +254,51 @@ class SQLiteMemoryStore:
             create index if not exists idx_run_steps_run_id on run_steps(run_id);
             create index if not exists idx_health_checks_created on health_checks(created_at);
             create index if not exists idx_run_reviews_agent_id on run_reviews(agent_id);
+
+            create table if not exists workflow_sessions (
+                id text primary key,
+                name text not null,
+                session_type text not null,
+                status text not null default 'active',
+                created_at text not null
+            );
+
+            create table if not exists workflow_phases (
+                id text primary key,
+                session_id text not null references workflow_sessions(id),
+                phase_key text not null,
+                phase_order integer not null,
+                user_content text not null default '',
+                ai_suggestion text,
+                status text not null default 'pending',
+                created_at text not null,
+                completed_at text
+            );
+
+            create index if not exists idx_workflow_phases_session on workflow_phases(session_id);
+
+            create table if not exists agent_metrics (
+                id text primary key,
+                agent_name text not null,
+                run_started_at text not null,
+                run_finished_at text,
+                duration_seconds real,
+                status text not null default 'running',
+                llm_calls integer default 0,
+                prompt_tokens integer default 0,
+                response_tokens integer default 0,
+                tokens_per_second real,
+                model_load_ms real,
+                context_window_pct real,
+                output_items integer default 0,
+                error_message text,
+                cpu_percent real,
+                ram_percent real,
+                created_at text not null
+            );
+
+            create index if not exists idx_agent_metrics_name on agent_metrics(agent_name);
+            create index if not exists idx_agent_metrics_started on agent_metrics(run_started_at);
             """
         )
         self.connection.commit()
@@ -395,12 +457,12 @@ class SQLiteMemoryStore:
         ).fetchall()
         return [dict(row) for row in rows]
 
-    def add_task(self, text, due_date=None, priority="normal"):
-        task = self._insert_task(text, timestamp(), make_id(), False, due_date, priority)
+    def add_task(self, text, due_date=None, priority="normal", project=None):
+        task = self._insert_task(text, timestamp(), make_id(), False, due_date, priority, project)
         self.connection.commit()
         return task
 
-    def _insert_task(self, text, created_at, task_id, completed, due_date, priority):
+    def _insert_task(self, text, created_at, task_id, completed, due_date, priority, project=None):
         task = {
             "id": task_id,
             "text": text,
@@ -408,11 +470,12 @@ class SQLiteMemoryStore:
             "created_at": created_at,
             "due_date": due_date,
             "priority": priority,
+            "project": project,
         }
         self.connection.execute(
             """
-            insert or ignore into tasks(id, text, completed, created_at, due_date, priority)
-            values (?, ?, ?, ?, ?, ?)
+            insert or ignore into tasks(id, text, completed, created_at, due_date, priority, project)
+            values (?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 task["id"],
@@ -421,6 +484,7 @@ class SQLiteMemoryStore:
                 task["created_at"],
                 task["due_date"],
                 task["priority"],
+                task["project"],
             ),
         )
         return task
@@ -428,11 +492,35 @@ class SQLiteMemoryStore:
     def list_tasks(self):
         rows = self.connection.execute(
             """
-            select id, text, completed, created_at, due_date, priority
+            select id, text, completed, created_at, due_date, priority, project
             from tasks order by created_at, rowid
             """
         ).fetchall()
         return [task_from_row(row) for row in rows]
+
+    def get_task_by_id(self, task_id):
+        row = self.connection.execute(
+            "select id, text, completed, created_at, due_date, priority, project from tasks where id = ?",
+            (task_id,),
+        ).fetchone()
+        return task_from_row(row) if row else None
+
+    def update_task(self, task_id, text=None, due_date=None, priority=None, project=None):
+        task_row = self.connection.execute(
+            "select id, text, due_date, priority, project from tasks where id = ?", (task_id,)
+        ).fetchone()
+        if not task_row:
+            return False
+        new_text = text if text is not None else task_row["text"]
+        new_due = due_date  # None clears it; caller must pass old value to preserve
+        new_priority = priority if priority is not None else task_row["priority"]
+        new_project = project  # None clears it
+        self.connection.execute(
+            "update tasks set text=?, due_date=?, priority=?, project=? where id=?",
+            (new_text, new_due, new_priority, new_project, task_id),
+        )
+        self.connection.commit()
+        return True
 
     def delete_task_by_id(self, task_id):
         cursor = self.connection.execute("delete from tasks where id = ?", (task_id,))
@@ -1215,6 +1303,175 @@ class SQLiteMemoryStore:
             }
             for row in rows
         ]
+
+    # ── Agent Metrics ──────────────────────────────────────────────────────
+
+    def start_agent_run(self, agent_name, cpu_percent=None, ram_percent=None):
+        """Open a metrics record at the start of an agent run. Returns the run id."""
+        run_id = make_id()
+        now = timestamp()
+        self.connection.execute(
+            """insert into agent_metrics
+               (id,agent_name,run_started_at,status,cpu_percent,ram_percent,created_at)
+               values(?,?,?,'running',?,?,?)""",
+            (run_id, agent_name, now, cpu_percent, ram_percent, now),
+        )
+        self.connection.commit()
+        return run_id
+
+    def finish_agent_run(self, run_id, status, duration_seconds,
+                         llm_calls=0, prompt_tokens=0, response_tokens=0,
+                         tokens_per_second=None, model_load_ms=None,
+                         context_window_pct=None, output_items=0,
+                         error_message=None):
+        now = timestamp()
+        self.connection.execute(
+            """update agent_metrics set
+               run_finished_at=?, status=?, duration_seconds=?, llm_calls=?,
+               prompt_tokens=?, response_tokens=?, tokens_per_second=?,
+               model_load_ms=?, context_window_pct=?, output_items=?,
+               error_message=?
+               where id=?""",
+            (now, status, duration_seconds, llm_calls, prompt_tokens,
+             response_tokens, tokens_per_second, model_load_ms,
+             context_window_pct, output_items, error_message, run_id),
+        )
+        self.connection.commit()
+
+    def list_agent_metrics(self, agent_name=None, limit=200):
+        if agent_name:
+            rows = self.connection.execute(
+                """select * from agent_metrics where agent_name=?
+                   order by run_started_at desc limit ?""",
+                (agent_name, limit),
+            ).fetchall()
+        else:
+            rows = self.connection.execute(
+                "select * from agent_metrics order by run_started_at desc limit ?",
+                (limit,),
+            ).fetchall()
+        return [dict(r) for r in rows]
+
+    def agent_metrics_summary(self):
+        """Per-agent aggregate stats for the manager dashboard."""
+        rows = self.connection.execute(
+            """select
+                agent_name,
+                count(*) as total_runs,
+                sum(case when status='success' then 1 else 0 end) as success_runs,
+                sum(case when status='error' then 1 else 0 end) as error_runs,
+                round(avg(duration_seconds),2) as avg_duration,
+                round(avg(prompt_tokens),0) as avg_prompt_tokens,
+                round(avg(response_tokens),0) as avg_response_tokens,
+                round(avg(tokens_per_second),1) as avg_tps,
+                sum(prompt_tokens+response_tokens) as total_tokens,
+                sum(output_items) as total_outputs,
+                max(run_started_at) as last_run,
+                max(case when status='success' then run_started_at end) as last_success
+               from agent_metrics
+               group by agent_name
+               order by last_run desc"""
+        ).fetchall()
+        result = []
+        for r in rows:
+            d = dict(r)
+            d["success_rate"] = round(100 * d["success_runs"] / d["total_runs"], 1) if d["total_runs"] else 0
+            result.append(d)
+        return result
+
+    def recent_agent_runs(self, limit=50):
+        rows = self.connection.execute(
+            """select agent_name, run_started_at, status, duration_seconds,
+                      prompt_tokens, response_tokens, tokens_per_second,
+                      output_items, error_message, model_load_ms
+               from agent_metrics order by run_started_at desc limit ?""",
+            (limit,),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    # ── Workflow (Lifecycle / Analytics / Agent Builder) ──────────────────
+
+    def create_workflow_session(self, name, session_type):
+        sid = make_id()
+        self.connection.execute(
+            "insert into workflow_sessions(id,name,session_type,status,created_at) values(?,?,?,?,?)",
+            (sid, name, session_type, "active", timestamp()),
+        )
+        self.connection.commit()
+        return {"id": sid, "name": name, "session_type": session_type, "status": "active"}
+
+    def get_workflow_session(self, session_id):
+        row = self.connection.execute(
+            "select id,name,session_type,status,created_at from workflow_sessions where id=?",
+            (session_id,),
+        ).fetchone()
+        return dict(row) if row else None
+
+    def list_workflow_sessions(self, session_type=None):
+        if session_type:
+            rows = self.connection.execute(
+                "select id,name,session_type,status,created_at from workflow_sessions where session_type=? order by created_at desc",
+                (session_type,),
+            ).fetchall()
+        else:
+            rows = self.connection.execute(
+                "select id,name,session_type,status,created_at from workflow_sessions order by created_at desc"
+            ).fetchall()
+        return [dict(r) for r in rows]
+
+    def get_workflow_phases(self, session_id):
+        rows = self.connection.execute(
+            "select id,session_id,phase_key,phase_order,user_content,ai_suggestion,status,created_at,completed_at from workflow_phases where session_id=? order by phase_order",
+            (session_id,),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    def save_workflow_phase(self, session_id, phase_key, phase_order, user_content, ai_suggestion):
+        pid = make_id()
+        now = timestamp()
+        existing = self.connection.execute(
+            "select id from workflow_phases where session_id=? and phase_key=?",
+            (session_id, phase_key),
+        ).fetchone()
+        if existing:
+            self.connection.execute(
+                "update workflow_phases set user_content=?,ai_suggestion=?,status='complete',completed_at=? where id=?",
+                (user_content, ai_suggestion, now, existing["id"]),
+            )
+        else:
+            self.connection.execute(
+                "insert into workflow_phases(id,session_id,phase_key,phase_order,user_content,ai_suggestion,status,created_at,completed_at) values(?,?,?,?,?,?,'complete',?,?)",
+                (pid, session_id, phase_key, phase_order, user_content, ai_suggestion, now, now),
+            )
+        self.connection.commit()
+
+    def complete_workflow_session(self, session_id):
+        self.connection.execute(
+            "update workflow_sessions set status='complete' where id=?", (session_id,)
+        )
+        self.connection.commit()
+
+    def search(self, query: str, limit: int = 40) -> dict:
+        """Full-text search across tasks, notes, and memory summaries."""
+        q = f"%{query}%"
+        task_rows = self.connection.execute(
+            """select id, text, completed, created_at, due_date, priority, project
+               from tasks where text like ? order by created_at desc limit ?""",
+            (q, limit),
+        ).fetchall()
+        note_rows = self.connection.execute(
+            "select id, text, created_at from notes where text like ? order by created_at desc limit ?",
+            (q, limit),
+        ).fetchall()
+        summary_rows = self.connection.execute(
+            "select id, scope, summary, created_at from memory_summaries where summary like ? order by created_at desc limit ?",
+            (q, limit),
+        ).fetchall()
+        return {
+            "tasks": [task_from_row(r) for r in task_rows],
+            "notes": [dict(r) for r in note_rows],
+            "summaries": [dict(r) for r in summary_rows],
+        }
 
     def memory_stats(self):
         stats = {}

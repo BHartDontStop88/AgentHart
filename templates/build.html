@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="pg-header">
+  <div><h1>Agent Builder</h1><div class="sub">Build a CLAUDE.md agent file from scratch · Drop it into any project</div></div>
+  {% if not session %}<button class="btn-primary" onclick="document.getElementById('new-form').style.display='block';this.style.display='none'">+ New Agent</button>{% endif %}
+</div>
+
+{% if not session %}
+<div id="new-form" style="display:none" class="section">
+  <div class="section-title">Define Your Agent</div>
+  <form method="post" action="/build/new">
+    <div style="margin-bottom:12px">
+      <input type="text" name="name" placeholder="Agent name (e.g. Security Recon Agent, WGU Study Coach)" class="w-lg" required style="width:100%">
+    </div>
+    <button class="btn-primary">Build Agent →</button>
+  </form>
+</div>
+
+<div class="section">
+  <div class="section-title">Your Agent Builds <span class="cnt">{{ sessions | length }}</span></div>
+  {% if sessions %}
+  <div class="session-list">
+  {% for s in sessions %}
+  <div class="session-item">
+    <div>
+      <div style="font-weight:600">{{ s.name }}</div>
+      <div class="dim small">{{ s.created_at[:10] }}</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <span class="badge {{ s.status }}">{{ s.status }}</span>
+      <a href="/build/{{ s.id }}" class="btn btn-ok" style="text-decoration:none">Open</a>
+    </div>
+  </div>
+  {% endfor %}
+  </div>
+  {% else %}
+  <p class="empty">No agent builds yet. Define an agent above.</p>
+  {% endif %}
+</div>
+
+{% else %}
+<div style="margin-bottom:20px;display:flex;align-items:center;gap:12px">
+  <a href="/build" class="dim small">← All Builds</a>
+  <span style="font-weight:600">{{ session.name }}</span>
+  <span class="badge {{ session.status }}">{{ session.status }}</span>
+</div>
+
+<div class="grid-2">
+<div>
+<div class="phase-flow">
+{% for phase in phases %}
+<div class="phase-card {{ phase.state }}">
+  <div class="phase-header">
+    <div class="phase-num">{{ loop.index }}</div>
+    <div class="phase-title">{{ phase.title }}</div>
+    <div class="phase-status">
+      {% if phase.state == 'complete' %}✓ Done
+      {% elif phase.state == 'active' %}● Active
+      {% else %}🔒 Locked{% endif %}
+    </div>
+  </div>
+
+  {% if phase.state == 'complete' or phase.state == 'active' %}
+  <div class="phase-body">
+    <div class="phase-prompt dim">{{ phase.prompt }}</div>
+    {% if phase.state == 'complete' %}
+    <div class="phase-content-display">{{ phase.user_content }}</div>
+    {% if phase.ai_suggestion %}
+    <div class="ai-suggestion">
+      <div class="ai-suggestion-label">Gemma4 Suggestion →</div>
+      {{ phase.ai_suggestion }}
+    </div>
+    {% endif %}
+    {% else %}
+    <form class="phase-form" method="post" action="/build/{{ session.id }}/phase">
+      <input type="hidden" name="phase_key" value="{{ phase.key }}">
+      <input type="hidden" name="phase_order" value="{{ loop.index }}">
+      <textarea name="user_content" class="tall" placeholder="{{ phase.placeholder }}" required></textarea>
+      <div style="margin-top:12px">
+        <button class="btn-ai">Save &amp; Get Suggestions →</button>
+      </div>
+    </form>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endfor %}
+</div>
+
+{% if all_complete and not exported_md %}
+<form method="post" action="/build/{{ session.id }}/generate">
+  <button class="btn-primary" style="width:100%">⚡ Generate CLAUDE.md File</button>
+</form>
+{% endif %}
+</div>
+
+<!-- Right: live preview / export -->
+<div>
+  {% if exported_md %}
+  <div class="section">
+    <div class="section-title" style="justify-content:space-between">
+      CLAUDE.md Output
+      <form method="post" action="/build/{{ session.id }}/save" style="display:inline">
+        <input type="text" name="file_path" placeholder="/path/to/project/CLAUDE.md" style="width:220px;font-size:12px">
+        <button class="btn-ok" style="font-size:12px">Save to Path</button>
+      </form>
+    </div>
+    <pre class="code-export">{{ exported_md }}</pre>
+  </div>
+  {% else %}
+  <div class="section">
+    <div class="section-title">What You're Building</div>
+    <p class="dim" style="font-size:13px;line-height:1.7">
+      Complete all 5 sections to generate a <code>CLAUDE.md</code> file.<br><br>
+      This file tells Claude Code exactly how your agent should behave — its role, what commands it knows, what it's not allowed to do, how to write code, and what security rules apply.<br><br>
+      Once generated you can drop it into any project folder and run:<br>
+      <code style="display:block;margin-top:8px;padding:8px 10px;background:var(--bg);border-radius:6px;border:1px solid var(--border)">claude --add-dir /path/to/project</code>
+    </p>
+    <div class="section-title" style="margin-top:16px">Sections</div>
+    {% for phase in phases %}
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border-soft)">
+      <span class="badge {{ phase.state }}">{{ phase.state }}</span>
+      <span style="font-size:13px">{{ phase.title }}</span>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+</div>
+{% endif %}
+
+{% endblock %}

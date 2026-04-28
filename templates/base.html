@@ -5,17 +5,41 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>{{ title }} — Agent Hart</title>
   <link rel="stylesheet" href="/static/style.css">
+  {% if autorefresh %}<script>setTimeout(()=>location.reload(),30000);</script>{% endif %}
 </head>
 <body>
 <div id="layout">
   <nav id="sidebar">
-    <div class="brand">Agent Hart</div>
-    <a href="/today"{% if active == 'today' %} class="active"{% endif %}>Today</a>
-    <a href="/inbox"{% if active == 'inbox' %} class="active"{% endif %}>Inbox</a>
-    <a href="/agents"{% if active == 'agents' %} class="active"{% endif %}>Agents</a>
-    <a href="/health"{% if active == 'health' %} class="active"{% endif %}>Health</a>
-    <a href="/memory"{% if active == 'memory' %} class="active"{% endif %}>Memory</a>
+    <div class="brand">
+      <div class="brand-name">Agent Hart</div>
+      <div class="brand-sub">Local AI Assistant</div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">Overview</div>
+      <a href="/today"{% if active=='today' %} class="active"{% endif %}>Dashboard</a>
+      <a href="/projects"{% if active=='projects' %} class="active"{% endif %}>Projects</a>
+      <a href="/inbox"{% if active=='inbox' %} class="active"{% endif %}>Inbox</a>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">Workflows</div>
+      <a href="/lifecycle"{% if active=='lifecycle' %} class="active"{% endif %}>PM Lifecycle</a>
+      <a href="/analytics"{% if active=='analytics' %} class="active"{% endif %}>Data Analytics</a>
+      <a href="/build"{% if active=='build' %} class="active"{% endif %}>Agent Builder</a>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">System</div>
+      <a href="/search"{% if active=='search' %} class="active"{% endif %}>Search</a>
+      <a href="/metrics"{% if active=='metrics' %} class="active"{% endif %}>Metrics</a>
+      <a href="/memory"{% if active=='memory' %} class="active"{% endif %}>Memory</a>
+      <a href="/reports"{% if active=='reports' %} class="active"{% endif %}>Reports</a>
+      <a href="/agents"{% if active=='agents' %} class="active"{% endif %}>Agents</a>
+      <a href="/health"{% if active=='health' %} class="active"{% endif %}>Health</a>
+    </div>
   </nav>
+
   <main id="main">
     {% if msg %}
     <div class="flash {{ msg_type }}">{{ msg }}</div>

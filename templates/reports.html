@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="pg-header">
+  <h1>Reports</h1>
+</div>
+
+<div class="grid-2">
+
+  <!-- Left: report files by category -->
+  <div>
+    {% for category, files in categories.items() %}
+    <div class="section">
+      <div class="section-title">{{ category | replace("_", " ") | title }} <span class="cnt">{{ files | length }}</span></div>
+      {% if files %}
+      <table>
+        <thead><tr><th>Report</th><th></th></tr></thead>
+        <tbody>
+        {% for f in files %}
+        <tr>
+          <td>{{ f.name }}</td>
+          <td class="td-actions"><a href="/{{ f.path }}" class="btn-ok" style="text-decoration:none;padding:2px 8px">view</a></td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="empty">No reports yet.</p>
+      {% endif %}
+    </div>
+    {% else %}
+    <div class="section">
+      <p class="empty">No report files yet — agents will generate them on their first run.</p>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Right: agent run log and alerts -->
+  <div>
+    <div class="section">
+      <div class="section-title">Agent Alerts <span class="cnt">{{ agent_alerts | length }}</span></div>
+      {% if agent_alerts %}
+      <table>
+        <thead><tr><th>Agent</th><th>Detail</th><th>When</th></tr></thead>
+        <tbody>
+        {% for e in agent_alerts %}
+        <tr>
+          <td class="small">{{ e.details.agent }}</td>
+          <td><span class="trunc small">{{ e.details | string | truncate(60) }}</span></td>
+          <td class="muted small">{{ e.created_at[:16] }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="empty">No alerts triggered yet.</p>
+      {% endif %}
+    </div>
+
+    <div class="section">
+      <div class="section-title">Recent Agent Runs <span class="cnt">{{ agent_runs | length }}</span></div>
+      {% if agent_runs %}
+      <table>
+        <thead><tr><th>Agent</th><th>When</th></tr></thead>
+        <tbody>
+        {% for e in agent_runs %}
+        <tr>
+          <td class="small">{{ e.details.get("agent", "—") }}</td>
+          <td class="muted small">{{ e.created_at[:16] }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="empty">No agent runs logged yet.</p>
+      {% endif %}
+    </div>
+
+    <div class="section">
+      <div class="section-title">Memory Summaries <span class="cnt">{{ summaries | length }}</span></div>
+      {% if summaries %}
+      <table>
+        <thead><tr><th>Scope</th><th>Summary</th><th>Date</th></tr></thead>
+        <tbody>
+        {% for s in summaries %}
+        <tr>
+          <td class="small">{{ s.scope }}</td>
+          <td><span class="trunc">{{ s.summary[:80] }}</span></td>
+          <td class="muted small">{{ s.created_at[:10] }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="empty">No summaries yet.</p>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+{% endblock %}
